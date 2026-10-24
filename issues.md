@@ -1,5 +1,6 @@
 # Job Copilot — MVP Issue Backlog
 
+## Here is the issues md file
 > **Source of truth:** `Job Copilot MVP — Build Plan & Prompts` (Oct 24, 2026)
 > **Repository:** [teamhardware30/teamhardware30](https://github.com/teamhardware30/teamhardware30)
 > **Audit baseline:** `0bd43de` — "Scaffold Job Copilot NestJS app with auth, users, and profiles"
