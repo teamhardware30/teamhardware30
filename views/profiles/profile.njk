@@ -1,0 +1,26 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Your profile — Job Copilot{% endblock %}
+{% block content %}
+  <div class="mx-auto max-w-2xl space-y-10">
+    <div id="profile-summary">
+      {% include "profiles/partials/profile-summary.njk" %}
+    </div>
+
+    <section>
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-brand-text/60">Resumes</h2>
+      <div class="mt-3">{% include "profiles/partials/resumes-list.njk" %}</div>
+
+      <form
+        class="mt-3"
+        hx-post="/profile/resumes"
+        hx-target="#resumes-list"
+        hx-swap="outerHTML"
+        hx-encoding="multipart/form-data"
+      >
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+        <input type="file" name="resume" accept=".pdf,.docx,.zip" required class="text-sm" />
+        <button type="submit" class="ml-2 rounded-md bg-brand-primary px-3 py-1.5 text-sm text-white hover:bg-brand-primary/90">Upload another</button>
+      </form>
+    </section>
+  </div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% from "components/input.njk" import input %}
+{% from "components/button.njk" import button %}
+
+<div>
+  <h1 class="text-xl font-semibold text-brand-text">Your job preferences</h1>
+  <p class="mt-1 text-sm text-brand-text/60">We'll use this to find and rank matching roles.</p>
+
+  <form
+    class="mt-6 space-y-5"
+    hx-post="/onboarding/preferences"
+    hx-target="#onboarding-step"
+    hx-swap="innerHTML"
+  >
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+
+    {{ input("desiredTitles", { label: "Desired job titles (comma separated)", placeholder: "Software Engineer, Product Manager" }) }}
+    {{ input("locations", { label: "Preferred locations (comma separated)", placeholder: "Nairobi, Remote" }) }}
+
+    <label class="flex items-center gap-2 text-sm">
+      <input type="checkbox" name="remote" /> Open to fully remote roles
+    </label>
+
+    <div class="grid grid-cols-3 gap-3">
+      {{ input("salaryMin", { label: "Min salary", type: "number" }) }}
+      {{ input("salaryMax", { label: "Max salary", type: "number" }) }}
+      {{ input("salaryCurrency", { label: "Currency", value: "KES" }) }}
+    </div>
+
+    <div>
+      <p class="text-sm font-medium text-brand-text">Job types</p>
+      <div class="mt-2 flex flex-wrap gap-4">
+        {% for type in jobTypeValues %}
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="jobTypes" value="{{ type }}" /> {{ type | replace("_", " ") }}
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    {{ button("Finish setup", { type: "submit" }) }}
+  </form>
+</div>

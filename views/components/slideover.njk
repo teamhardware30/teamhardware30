@@ -1,0 +1,16 @@
+{% macro slideover(id, title) %}
+  <div
+    id="{{ id }}"
+    x-data="{ open: true }"
+    x-show="open"
+    class="fixed inset-0 z-40 flex justify-end bg-black/40"
+  >
+    <div class="h-full w-full max-w-sm overflow-y-auto bg-white p-6 shadow-xl" x-on:click.outside="open = false">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-brand-text">{{ title }}</h2>
+        <button type="button" x-on:click="open = false" class="text-brand-text/50 hover:text-brand-text">&times;</button>
+      </div>
+      {{ caller() }}
+    </div>
+  </div>
+{% endmacro %}

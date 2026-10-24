@@ -1,0 +1,10 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Error — Job Copilot{% endblock %}
+{% block content %}
+  <div class="py-20 text-center">
+    <p class="text-sm font-medium text-brand-primary">{{ status }}</p>
+    <h1 class="mt-2 text-2xl font-semibold">Something went wrong</h1>
+    <p class="mt-2 text-sm text-brand-text/60">{{ message }}</p>
+    <a href="/" class="mt-6 inline-block text-sm text-brand-primary hover:underline">Back home</a>
+  </div>
+{% endblock %}

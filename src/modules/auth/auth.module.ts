@@ -1,0 +1,31 @@
+import { Module } from '@nestjs/common';
+import { PassportModule } from '@nestjs/passport';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { ConfigService } from '@nestjs/config';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { LocalStrategy } from './strategies/local.strategy';
+import { LinkedinStrategy } from './strategies/linkedin.strategy';
+import { GoogleStrategy } from './strategies/google.strategy';
+import { UsersModule } from '../users/users.module';
+import { MailModule } from '../../common/mail/mail.module';
+import { RedisThrottlerStorage } from '../../common/throttler/redis-throttler.storage';
+
+@Module({
+  imports: [
+    UsersModule,
+    MailModule,
+    PassportModule.register({ session: true }),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        throttlers: [{ ttl: 60_000, limit: 10 }],
+        storage: new RedisThrottlerStorage(config),
+      }),
+    }),
+  ],
+  controllers: [AuthController],
+  providers: [AuthService, LocalStrategy, LinkedinStrategy, GoogleStrategy],
+  exports: [AuthService],
+})
+export class AuthModule {}

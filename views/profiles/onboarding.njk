@@ -1,0 +1,23 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Set up your profile — Job Copilot{% endblock %}
+{% block content %}
+  <div class="mx-auto max-w-2xl">
+    <ol class="mb-8 flex items-center justify-between text-xs font-medium text-brand-text/50">
+      <li class="{{ 'text-brand-primary' if step >= 1 }}">1. Upload CV</li>
+      <li class="{{ 'text-brand-primary' if step >= 2 }}">2. Parsing</li>
+      <li class="{{ 'text-brand-primary' if step >= 3 }}">3. Profile</li>
+      <li class="{{ 'text-brand-primary' if step >= 4 }}">4. Preferences</li>
+    </ol>
+
+    <div
+      id="onboarding-step"
+      {% if step >= 3 %}hx-get="/onboarding/steps/{{ step }}" hx-trigger="load" hx-swap="innerHTML"{% endif %}
+    >
+      {% if step == 1 %}
+        {% include "profiles/partials/onboarding-step-1.njk" %}
+      {% elif step == 2 %}
+        {% include "profiles/partials/onboarding-step-2.njk" %}
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% macro empty_state(title, description, actionLabel=None, actionHref=None) %}
+  <div class="rounded-lg border border-dashed border-brand-text/20 p-8 text-center">
+    <p class="text-sm font-medium text-brand-text">{{ title }}</p>
+    {% if description %}
+      <p class="mt-1 text-sm text-brand-text/60">{{ description }}</p>
+    {% endif %}
+    {% if actionLabel and actionHref %}
+      <a href="{{ actionHref }}" class="mt-4 inline-flex items-center justify-center rounded-md bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90">
+        {{ actionLabel }}
+      </a>
+    {% endif %}
+  </div>
+{% endmacro %}

@@ -1,0 +1,46 @@
+{% from "components/toast.njk" import toast %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Job Copilot{% endblock %}</title>
+  <link rel="stylesheet" href="/css/app.css" />
+  <script src="/vendor/htmx/htmx.min.js" defer></script>
+  <script src="/vendor/alpine/cdn.min.js" defer></script>
+</head>
+<body
+  class="min-h-screen bg-brand-bg text-brand-text antialiased"
+  hx-headers='{"x-csrf-token": "{{ csrfToken }}"}'
+>
+  <header class="border-b border-brand-primary/10 bg-white">
+    <nav class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+      <a href="/" class="text-lg font-semibold text-brand-primary">Job Copilot</a>
+      <div class="flex items-center gap-4 text-sm">
+        {% if user %}
+          <a href="/profile" class="hover:text-brand-primary">Profile</a>
+          <form method="post" action="/logout">
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+            <button type="submit" class="text-brand-text/70 hover:text-brand-primary">Sign out</button>
+          </form>
+        {% else %}
+          <a href="/login" class="hover:text-brand-primary">Sign in</a>
+          <a href="/register" class="rounded-md bg-brand-primary px-3 py-1.5 text-white hover:bg-brand-primary/90">Get started</a>
+        {% endif %}
+      </div>
+    </nav>
+  </header>
+
+  <main class="mx-auto max-w-5xl px-4 py-8">
+    {% if flash and flash.length %}
+      <div class="mb-6 space-y-2">
+        {% for message in flash %}
+          {{ toast(message.type, message.message) }}
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

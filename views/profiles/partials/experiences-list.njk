@@ -1,0 +1,22 @@
+<div id="experiences-list" class="space-y-3">
+  {% for exp in experiences %}
+    <div class="flex items-start justify-between rounded-md border border-brand-text/10 bg-white p-3">
+      <div>
+        <p class="text-sm font-medium text-brand-text">{{ exp.title }} · {{ exp.company }}</p>
+        <p class="text-xs text-brand-text/60">
+          {{ exp.startDate or "—" }} – {{ "Present" if exp.current else (exp.endDate or "—") }}
+          {% if exp.location %} · {{ exp.location }}{% endif %}
+        </p>
+      </div>
+      <button
+        type="button"
+        hx-delete="/onboarding/experiences/{{ exp.id }}"
+        hx-target="#experiences-list"
+        hx-swap="outerHTML"
+        class="text-xs text-red-600 hover:underline"
+      >Remove</button>
+    </div>
+  {% else %}
+    <p class="text-sm text-brand-text/50">No experience added yet.</p>
+  {% endfor %}
+</div>

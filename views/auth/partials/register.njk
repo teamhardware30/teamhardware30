@@ -1,0 +1,31 @@
+{% from "components/input.njk" import input %}
+{% from "components/button.njk" import button %}
+{% from "components/toast.njk" import toast %}
+
+<div class="mx-auto max-w-sm" id="register-form-wrapper">
+  <h1 class="text-xl font-semibold text-brand-text">Create your account</h1>
+  <p class="mt-1 text-sm text-brand-text/60">Start matching with jobs in minutes.</p>
+
+  {% if fieldErrors._root %}
+    <div class="mt-4">{{ toast("error", fieldErrors._root) }}</div>
+  {% endif %}
+
+  <form
+    class="mt-6 space-y-4"
+    method="post"
+    action="/register"
+    hx-post="/register"
+    hx-target="#register-form-wrapper"
+    hx-swap="outerHTML"
+  >
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+    {{ input("name", { label: "Full name", value: values.name, required: true, error: fieldErrors.name }) }}
+    {{ input("email", { label: "Email", type: "email", value: values.email, required: true, error: fieldErrors.email }) }}
+    {{ input("password", { label: "Password", type: "password", required: true, error: fieldErrors.password }) }}
+    {{ button("Create account", { type: "submit", class: "w-full" }) }}
+  </form>
+
+  <p class="mt-6 text-center text-sm text-brand-text/60">
+    Already have an account? <a href="/login" class="text-brand-primary hover:underline">Sign in</a>
+  </p>
+</div>

@@ -1,0 +1,36 @@
+{% from "components/input.njk" import input %}
+{% from "components/button.njk" import button %}
+{% from "components/toast.njk" import toast %}
+
+<div class="mx-auto max-w-sm" id="login-form-wrapper">
+  <h1 class="text-xl font-semibold text-brand-text">Sign in</h1>
+  <p class="mt-1 text-sm text-brand-text/60">Welcome back to Job Copilot.</p>
+
+  {% if fieldErrors._root %}
+    <div class="mt-4">{{ toast("error", fieldErrors._root) }}</div>
+  {% endif %}
+
+  <form
+    class="mt-6 space-y-4"
+    method="post"
+    action="/login"
+    hx-post="/login"
+    hx-target="#login-form-wrapper"
+    hx-swap="outerHTML"
+  >
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+    <input type="hidden" name="next" value="{{ next }}" />
+    {{ input("email", { label: "Email", type: "email", value: values.email, required: true, error: fieldErrors.email }) }}
+    {{ input("password", { label: "Password", type: "password", required: true, error: fieldErrors.password }) }}
+    {{ button("Sign in", { type: "submit", class: "w-full" }) }}
+  </form>
+
+  <div class="mt-4 flex gap-2">
+    <a href="/auth/google" class="flex-1 rounded-md border border-brand-text/20 px-3 py-2 text-center text-sm hover:bg-brand-text/5">Continue with Google</a>
+    <a href="/auth/linkedin" class="flex-1 rounded-md border border-brand-text/20 px-3 py-2 text-center text-sm hover:bg-brand-text/5">Continue with LinkedIn</a>
+  </div>
+
+  <p class="mt-6 text-center text-sm text-brand-text/60">
+    No account yet? <a href="/register" class="text-brand-primary hover:underline">Create one</a>
+  </p>
+</div>

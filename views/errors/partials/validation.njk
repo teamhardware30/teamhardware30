@@ -1,0 +1,6 @@
+{% from "components/toast.njk" import toast %}
+<div class="space-y-2">
+  {% for field, message in fieldErrors %}
+    {{ toast("error", message) }}
+  {% endfor %}
+</div>

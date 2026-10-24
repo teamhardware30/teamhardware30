@@ -1,0 +1,15 @@
+{% macro button(label, opts={}) %}
+  {% set variant = opts.variant or "primary" %}
+  {% set classes = {
+    "primary": "bg-brand-primary text-white hover:bg-brand-primary/90",
+    "accent": "bg-brand-accent text-brand-text hover:bg-brand-accent/90",
+    "ghost": "bg-transparent text-brand-primary hover:bg-brand-primary/10"
+  } %}
+  <button
+    type="{{ opts.type or 'button' }}"
+    {% if opts.attrs %}{{ opts.attrs | safe }}{% endif %}
+    class="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition disabled:opacity-50 {{ classes[variant] }} {{ opts.class }}"
+  >
+    {{ label }}
+  </button>
+{% endmacro %}

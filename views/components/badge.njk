@@ -1,0 +1,10 @@
+{% macro badge(label, tone="primary") %}
+  {% set tones = {
+    "primary": "bg-brand-primary/10 text-brand-primary",
+    "accent": "bg-brand-accent/20 text-brand-primary",
+    "neutral": "bg-brand-text/10 text-brand-text"
+  } %}
+  <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {{ tones[tone] }}">
+    {{ label }}
+  </span>
+{% endmacro %}

@@ -1,0 +1,14 @@
+<div id="skill-suggestions" class="absolute z-10 mt-1 w-full rounded-md border border-brand-text/10 bg-white shadow-lg">
+  {% for skill in suggestions %}
+    <button
+      type="button"
+      hx-post="/onboarding/skills"
+      hx-vals='{"name": "{{ skill.name }}"}'
+      hx-target="#skill-chips"
+      hx-swap="outerHTML"
+      class="block w-full px-3 py-2 text-left text-sm hover:bg-brand-primary/5"
+    >{{ skill.name }}</button>
+  {% else %}
+    <p class="px-3 py-2 text-sm text-brand-text/50">No matches — press enter to add it as a new skill.</p>
+  {% endfor %}
+</div>

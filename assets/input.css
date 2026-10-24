@@ -1,0 +1,15 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/forms";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-brand-primary: #166534;
+  --color-brand-accent: #84cc16;
+  --color-brand-bg: #f0fdf4;
+  --color-brand-text: #17211b;
+}
+
+body {
+  background-color: var(--color-brand-bg);
+  color: var(--color-brand-text);
+}
