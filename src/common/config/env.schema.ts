@@ -20,6 +20,11 @@ export const envSchema = z.object({
   GOOGLE_CALLBACK_URL: z.string().optional(),
 
   ANTHROPIC_API_KEY: z.string().optional(),
+  ANTHROPIC_MODEL: z.string().default('claude-sonnet-4-5'),
+
+  EMBEDDING_PROVIDER: z.enum(['voyage', 'none']).default('voyage'),
+  EMBEDDING_API_KEY: z.string().optional(),
+  EMBEDDING_MODEL: z.string().default('voyage-2'),
 
   AWS_REGION: z.string().default('us-east-1'),
   AWS_ACCESS_KEY_ID: z.string().optional(),

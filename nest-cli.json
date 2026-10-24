@@ -6,7 +6,8 @@
   "compilerOptions": {
     "deleteOutDir": true,
     "assets": [
-      { "include": "../views/**/*", "outDir": "views" }
+      { "include": "../views/**/*", "outDir": "dist/views" },
+      { "include": "modules/ai/prompts/**/*.md" }
     ],
     "watchAssets": true
   }

@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, ilike, or } from 'drizzle-orm';
-import { DRIZZLE, Database } from '../../db/db.provider';
+import { DRIZZLE, Database, DatabaseTransaction } from '../../db/db.provider';
 import {
   seekerProfiles,
   experiences,
@@ -12,8 +12,11 @@ import {
   NewExperience,
   NewEducation,
   NewResume,
+  Skill,
 } from '../../db/schema';
 import { PreferencesDto } from './schemas/profile.schemas';
+import { ParsedResume } from '../../common/schemas/parsed-resume.schema';
+import { normalizeDate } from './date-utils';
 
 @Injectable()
 export class ProfilesService {
@@ -61,8 +64,98 @@ export class ProfilesService {
     });
   }
 
-  setParseStatus(profileId: string, status: SeekerProfile['parseStatus']) {
-    return this.updateProfile(profileId, { parseStatus: status });
+  setParseStatus(profileId: string, status: SeekerProfile['parseStatus'], parseError: string | null = null) {
+    return this.updateProfile(profileId, { parseStatus: status, parseError });
+  }
+
+  findById(profileId: string): Promise<SeekerProfile | undefined> {
+    return this.db.query.seekerProfiles.findFirst({ where: eq(seekerProfiles.id, profileId) });
+  }
+
+  findResumeById(resumeId: string) {
+    return this.db.query.resumes.findFirst({ where: eq(resumes.id, resumeId) });
+  }
+
+  /**
+   * Shared upsert path for both the LLM-based CV parser and the LinkedIn
+   * ZIP importer: replaces experiences/educations, resolves skills against
+   * the canonical dictionary (flagging unmatched ones for review), and
+   * marks parsing done — all in one transaction so a partial failure
+   * leaves the previous profile state intact.
+   */
+  async applyParsedResume(profileId: string, parsed: ParsedResume): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await tx.delete(experiences).where(eq(experiences.profileId, profileId));
+      await tx.delete(educations).where(eq(educations.profileId, profileId));
+
+      if (parsed.experiences.length > 0) {
+        await tx.insert(experiences).values(
+          parsed.experiences.map((exp, index) => ({
+            ...exp,
+            startDate: normalizeDate(exp.startDate),
+            endDate: normalizeDate(exp.endDate),
+            profileId,
+            sortOrder: index,
+          })),
+        );
+      }
+      if (parsed.educations.length > 0) {
+        await tx.insert(educations).values(
+          parsed.educations.map((edu, index) => ({
+            ...edu,
+            startDate: normalizeDate(edu.startDate),
+            endDate: normalizeDate(edu.endDate),
+            profileId,
+            sortOrder: index,
+          })),
+        );
+      }
+
+      const skillIds = await this.resolveSkillIds(tx, parsed.skills);
+      await tx.delete(profileSkills).where(eq(profileSkills.profileId, profileId));
+      if (skillIds.length > 0) {
+        await tx
+          .insert(profileSkills)
+          .values(skillIds.map((skillId) => ({ profileId, skillId })))
+          .onConflictDoNothing();
+      }
+
+      await tx
+        .update(seekerProfiles)
+        .set({
+          headline: parsed.headline ?? undefined,
+          summary: parsed.summary ?? undefined,
+          parseStatus: 'done',
+          parseError: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(seekerProfiles.id, profileId));
+    });
+  }
+
+  private async resolveSkillIds(tx: DatabaseTransaction, names: string[]): Promise<string[]> {
+    const deduped = [...new Map(names.map((name) => [name.trim().toLowerCase(), name.trim()])).values()].filter(
+      Boolean,
+    );
+    if (deduped.length === 0) {
+      return [];
+    }
+
+    const catalog: Skill[] = await tx.query.skills.findMany();
+    const ids: string[] = [];
+
+    for (const name of deduped) {
+      const canonical = findCanonicalSkill(name, catalog);
+      if (canonical) {
+        ids.push(canonical.id);
+        continue;
+      }
+      const [created] = await tx.insert(skills).values({ name, needsReview: true }).returning();
+      catalog.push(created);
+      ids.push(created.id);
+    }
+
+    return ids;
   }
 
   listExperiences(profileId: string) {
@@ -163,4 +256,11 @@ export class ProfilesService {
     await this.db.delete(resumes).where(and(eq(resumes.id, resumeId), eq(resumes.profileId, profileId)));
     return this.listResumes(profileId);
   }
+}
+
+function findCanonicalSkill(name: string, catalog: Skill[]): Skill | undefined {
+  const needle = name.trim().toLowerCase();
+  return catalog.find(
+    (skill) => skill.name.toLowerCase() === needle || skill.aliases.some((alias) => alias.toLowerCase() === needle),
+  );
 }

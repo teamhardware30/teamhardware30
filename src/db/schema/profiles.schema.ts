@@ -32,6 +32,7 @@ export const seekerProfiles = pgTable('seeker_profiles', {
   salaryCurrency: text('salary_currency').notNull().default('KES'),
   jobTypes: text('job_types').array().notNull().default([]),
   parseStatus: parseStatusEnum('parse_status').notNull().default('pending'),
+  parseError: text('parse_error'),
   embedding: vector('embedding'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

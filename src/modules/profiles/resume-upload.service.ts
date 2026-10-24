@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { fileTypeFromBuffer } from 'file-type';
 
 export const MAX_RESUME_SIZE_BYTES = 5 * 1024 * 1024;
@@ -52,5 +52,14 @@ export class ResumeUploadService {
     );
 
     return { s3Key: key, mimeType, sizeBytes: file.size };
+  }
+
+  async download(s3Key: string): Promise<Buffer> {
+    const response = await this.s3.send(new GetObjectCommand({ Bucket: this.bucket, Key: s3Key }));
+    const chunks: Buffer[] = [];
+    for await (const chunk of response.Body as AsyncIterable<Buffer>) {
+      chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
   }
 }

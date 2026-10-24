@@ -88,6 +88,23 @@ export class ProfilesController {
     res.render('profiles/partials/onboarding-step-2', { profile });
   }
 
+  @Post('onboarding/resume/retry')
+  async retryResume(@Req() req: Request, @Res() res: Response) {
+    const profile = await this.profilesService.getOrCreateForUser(currentUser(req).id);
+    const [latest] = await this.profilesService.listResumes(profile.id);
+    if (!latest) {
+      res.status(422).render('profiles/partials/onboarding-step-1', {
+        profile,
+        fieldErrors: { resume: 'Upload a CV to get started' },
+      });
+      return;
+    }
+
+    await this.profilesService.setParseStatus(profile.id, 'processing');
+    await this.parseResumeQueue.add('parse', { profileId: profile.id, resumeId: latest.id });
+    res.render('profiles/partials/onboarding-step-2', { profile: { ...profile, parseStatus: 'processing' } });
+  }
+
   @Post('onboarding/experiences')
   async addExperience(
     @Body(new ZodValidationPipe(experienceSchema)) body: ReturnType<typeof experienceSchema.parse>,
