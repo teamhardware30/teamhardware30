@@ -18,7 +18,14 @@ import { WebModule } from './modules/web/web.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validate: validateEnv,
+      // In tests, env vars are set programmatically (e.g. ephemeral
+      // Testcontainers ports) — a real .env file on disk must not win
+      // over those.
+      ignoreEnvFile: process.env.NODE_ENV === 'test',
+    }),
     BullModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

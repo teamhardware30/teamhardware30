@@ -5,9 +5,9 @@ import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
-import { AppModule } from '../src/app.module';
-import { configureApp } from '../src/bootstrap';
 import { MailService } from '../src/common/mail/mail.service';
+import { S3_CLIENT } from '../src/modules/profiles/s3-client.provider';
+import { createFakeS3Client } from './fixtures/fake-s3-client';
 
 export interface TestContext {
   app: NestExpressApplication;
@@ -41,12 +41,21 @@ export async function createTestApp(): Promise<TestContext> {
 
   const sendVerificationEmail = vi.fn().mockResolvedValue(undefined);
 
+  // Dynamic import deferred until after the env vars above are set: a
+  // static top-level import would be hoisted ahead of this function body,
+  // so app.module.ts's ConfigModule.forRoot() would validate against an
+  // empty/stale environment instead of this test's Testcontainers values.
+  const { AppModule } = await import('../src/app.module');
+  const { configureApp } = await import('../src/bootstrap');
+
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(MailService)
     .useValue({ sendVerificationEmail })
+    .overrideProvider(S3_CLIENT)
+    .useValue(createFakeS3Client())
     .compile();
 
-  const app = moduleRef.createNestApplication<NestExpressApplication>();
+  const app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false });
   configureApp(app);
   await app.init();
 

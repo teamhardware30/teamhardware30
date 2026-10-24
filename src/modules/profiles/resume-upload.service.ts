@@ -1,8 +1,9 @@
 import { randomUUID } from 'crypto';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
-import { fileTypeFromBuffer } from 'file-type';
+import { fromBuffer as fileTypeFromBuffer } from 'file-type';
+import { S3_CLIENT } from './s3-client.provider';
 
 export const MAX_RESUME_SIZE_BYTES = 5 * 1024 * 1024;
 
@@ -20,11 +21,12 @@ export interface UploadedResume {
 
 @Injectable()
 export class ResumeUploadService {
-  private readonly s3: S3Client;
   private readonly bucket: string;
 
-  constructor(private readonly config: ConfigService) {
-    this.s3 = new S3Client({ region: config.get<string>('AWS_REGION') });
+  constructor(
+    @Inject(S3_CLIENT) private readonly s3: S3Client,
+    config: ConfigService,
+  ) {
     this.bucket = config.get<string>('S3_BUCKET') ?? 'job-copilot-uploads';
   }
 

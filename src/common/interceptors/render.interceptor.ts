@@ -26,6 +26,12 @@ export class HtmxRenderInterceptor implements NestInterceptor {
 
 function toPartialView(view: string): string {
   const segments = view.split('/');
+  if (segments.includes('partials')) {
+    // Already an explicit partial path (common for POST/mutation handlers
+    // that render a fragment directly) — leave it alone, or we'd produce
+    // a nonexistent "module/partials/partials/page" path.
+    return view;
+  }
   const page = segments.pop();
   return [...segments, 'partials', page].join('/');
 }

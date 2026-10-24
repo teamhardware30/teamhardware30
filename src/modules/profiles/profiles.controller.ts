@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Post,
   Query,
@@ -49,6 +51,7 @@ export class ProfilesController {
   }
 
   @Post('onboarding/resume')
+  @HttpCode(HttpStatus.OK)
   @UseInterceptors(FileInterceptor('resume'))
   async uploadResume(@UploadedFile() file: Express.Multer.File | undefined, @Req() req: Request, @Res() res: Response) {
     const user = currentUser(req);
@@ -89,6 +92,7 @@ export class ProfilesController {
   }
 
   @Post('onboarding/resume/retry')
+  @HttpCode(HttpStatus.OK)
   async retryResume(@Req() req: Request, @Res() res: Response) {
     const profile = await this.profilesService.getOrCreateForUser(currentUser(req).id);
     const [latest] = await this.profilesService.listResumes(profile.id);
@@ -106,6 +110,7 @@ export class ProfilesController {
   }
 
   @Post('onboarding/experiences')
+  @HttpCode(HttpStatus.OK)
   async addExperience(
     @Body(new ZodValidationPipe(experienceSchema)) body: ReturnType<typeof experienceSchema.parse>,
     @Req() req: Request,
@@ -132,6 +137,7 @@ export class ProfilesController {
   }
 
   @Post('onboarding/educations')
+  @HttpCode(HttpStatus.OK)
   async addEducation(
     @Body(new ZodValidationPipe(educationSchema)) body: ReturnType<typeof educationSchema.parse>,
     @Req() req: Request,
@@ -165,6 +171,7 @@ export class ProfilesController {
   }
 
   @Post('onboarding/skills')
+  @HttpCode(HttpStatus.OK)
   async addSkill(
     @Body(new ZodValidationPipe(skillSchema)) body: ReturnType<typeof skillSchema.parse>,
     @Req() req: Request,
@@ -207,6 +214,7 @@ export class ProfilesController {
   }
 
   @Post('profile')
+  @HttpCode(HttpStatus.OK)
   async updateProfile(@Body() body: Record<string, string>, @Req() req: Request, @Res() res: Response) {
     const profile = await this.profilesService.getOrCreateForUser(currentUser(req).id);
     await this.profilesService.updateProfile(profile.id, {
@@ -218,6 +226,7 @@ export class ProfilesController {
   }
 
   @Post('profile/resumes')
+  @HttpCode(HttpStatus.OK)
   @UseInterceptors(FileInterceptor('resume'))
   async addProfileResume(@UploadedFile() file: Express.Multer.File | undefined, @Req() req: Request, @Res() res: Response) {
     const user = currentUser(req);
@@ -231,6 +240,7 @@ export class ProfilesController {
   }
 
   @Post('profile/resumes/:id/primary')
+  @HttpCode(HttpStatus.OK)
   async setPrimaryResume(@Param('id') id: string, @Req() req: Request, @Res() res: Response) {
     const profile = await this.profilesService.getOrCreateForUser(currentUser(req).id);
     const resumes = await this.profilesService.setPrimaryResume(profile.id, id);

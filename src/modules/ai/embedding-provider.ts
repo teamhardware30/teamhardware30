@@ -15,11 +15,14 @@ class VoyageEmbeddingProvider implements EmbeddingProvider {
   private readonly logger = new Logger(VoyageEmbeddingProvider.name);
 
   constructor(
-    private readonly apiKey: string,
+    private readonly apiKey: string | undefined,
     private readonly model: string,
   ) {}
 
   async embed(texts: string[]): Promise<number[][]> {
+    if (!this.apiKey) {
+      throw new Error('EMBEDDING_API_KEY is not set — cannot call the Voyage embeddings API');
+    }
     if (texts.length === 0) {
       return [];
     }
@@ -55,11 +58,10 @@ export class EmbeddingProviderFactory {
   create(config: ConfigService): EmbeddingProvider {
     const provider = config.get<string>('EMBEDDING_PROVIDER');
     if (provider === 'voyage') {
-      const apiKey = config.get<string>('EMBEDDING_API_KEY');
-      if (!apiKey) {
-        throw new Error('EMBEDDING_API_KEY is required when EMBEDDING_PROVIDER=voyage');
-      }
-      return new VoyageEmbeddingProvider(apiKey, config.get<string>('EMBEDDING_MODEL') ?? 'voyage-2');
+      return new VoyageEmbeddingProvider(
+        config.get<string>('EMBEDDING_API_KEY'),
+        config.get<string>('EMBEDDING_MODEL') ?? 'voyage-2',
+      );
     }
     return new NoopEmbeddingProvider();
   }

@@ -1,9 +1,11 @@
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import express from 'express';
 import session from 'express-session';
 import RedisStore from 'connect-redis';
 import Redis from 'ioredis';
 import passport from 'passport';
+import cookieParser from 'cookie-parser';
 import { join } from 'path';
 import { doubleCsrfProtection } from './common/security/csrf';
 import { configureViews } from './common/view/nunjucks';
@@ -22,6 +24,13 @@ export function configureApp(app: NestExpressApplication): void {
   const expressApp = app.getHttpAdapter().getInstance();
 
   const redisClient = new Redis(config.get<string>('REDIS_URL') ?? 'redis://localhost:6379');
+
+  // Registered explicitly (rather than relying on Nest's own default
+  // body-parser) so req.body is reliably populated before the CSRF
+  // middleware below reads it — Nest's implicit parser isn't guaranteed
+  // to run ahead of middleware added here via app.use().
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
 
   app.use(
     session({
@@ -51,6 +60,7 @@ export function configureApp(app: NestExpressApplication): void {
     }
   });
 
+  app.use(cookieParser());
   app.use(doubleCsrfProtection);
 
   app.useStaticAssets(join(__dirname, '..', 'public'));

@@ -25,7 +25,22 @@ import { RedisThrottlerStorage } from '../../common/throttler/redis-throttler.st
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, LinkedinStrategy, GoogleStrategy],
+  providers: [
+    AuthService,
+    LocalStrategy,
+    {
+      provide: LinkedinStrategy,
+      inject: [ConfigService, AuthService],
+      useFactory: (config: ConfigService, authService: AuthService) =>
+        config.get<string>('LINKEDIN_CLIENT_ID') ? new LinkedinStrategy(config, authService) : undefined,
+    },
+    {
+      provide: GoogleStrategy,
+      inject: [ConfigService, AuthService],
+      useFactory: (config: ConfigService, authService: AuthService) =>
+        config.get<string>('GOOGLE_CLIENT_ID') ? new GoogleStrategy(config, authService) : undefined,
+    },
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}

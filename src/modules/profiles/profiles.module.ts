@@ -6,6 +6,7 @@ import { ProfilesService } from './profiles.service';
 import { ResumeUploadService, MAX_RESUME_SIZE_BYTES } from './resume-upload.service';
 import { ParseResumeProcessor, PARSE_RESUME_QUEUE } from './parse-resume.processor';
 import { EmbedProfileProcessor, EMBED_PROFILE_QUEUE } from './embed-profile.processor';
+import { s3ClientProvider } from './s3-client.provider';
 import { AiModule } from '../ai/ai.module';
 
 @Module({
@@ -15,7 +16,7 @@ import { AiModule } from '../ai/ai.module';
     MulterModule.register({ limits: { fileSize: MAX_RESUME_SIZE_BYTES } }),
   ],
   controllers: [ProfilesController],
-  providers: [ProfilesService, ResumeUploadService, ParseResumeProcessor, EmbedProfileProcessor],
+  providers: [ProfilesService, ResumeUploadService, ParseResumeProcessor, EmbedProfileProcessor, s3ClientProvider],
   exports: [ProfilesService],
 })
 export class ProfilesModule {}

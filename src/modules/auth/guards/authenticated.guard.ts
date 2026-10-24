@@ -1,5 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
-import { Request, Response } from 'express';
+import { Request } from 'express';
+import { RedirectException } from '../../../common/exceptions/redirect.exception';
 
 @Injectable()
 export class AuthenticatedGuard implements CanActivate {
@@ -8,9 +9,6 @@ export class AuthenticatedGuard implements CanActivate {
     if (req.isAuthenticated?.()) {
       return true;
     }
-    const res = context.switchToHttp().getResponse<Response>();
-    const next = encodeURIComponent(req.originalUrl);
-    res.redirect(`/login?next=${next}`);
-    return false;
+    throw new RedirectException(`/login?next=${encodeURIComponent(req.originalUrl)}`);
   }
 }
