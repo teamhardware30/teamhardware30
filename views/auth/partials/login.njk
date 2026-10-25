@@ -43,6 +43,16 @@
     <a href="/auth/linkedin" class="flex-1 rounded-md border border-brand-text/20 px-3 py-2 text-center text-sm hover:bg-brand-text/5">Continue with LinkedIn</a>
   </div>
 
+  <div class="mt-6 space-y-2">
+    <p class="text-center text-xs font-medium uppercase tracking-wide text-brand-text/50">Demo accounts</p>
+    <div class="grid gap-2 sm:grid-cols-3">
+      <button type="button" class="rounded-md border border-brand-text/20 px-3 py-2 text-sm hover:bg-brand-text/5" @click="document.getElementById('email').value='seeker@demo.jobcopilot.local'; document.getElementById('password').value='DemoSeeker123!';">Seeker</button>
+      <button type="button" class="rounded-md border border-brand-text/20 px-3 py-2 text-sm hover:bg-brand-text/5" @click="document.getElementById('email').value='employer@demo.jobcopilot.local'; document.getElementById('password').value='DemoEmployer123!';">Employer</button>
+      <button type="button" class="rounded-md border border-brand-text/20 px-3 py-2 text-sm hover:bg-brand-text/5" @click="document.getElementById('email').value='admin@demo.jobcopilot.local'; document.getElementById('password').value='DemoAdmin123!';">Admin</button>
+    </div>
+    <p class="text-center text-xs text-brand-text/50">These buttons fill the form only; click Sign in to continue.</p>
+  </div>
+
   <p class="mt-6 text-center text-sm text-brand-text/60">
     No account yet? <a href="/register" class="text-brand-primary hover:underline">Create one</a>
   </p>

@@ -1,6 +1,6 @@
 import mammoth from 'mammoth';
 import { createWorker } from 'tesseract.js';
-import { getDocumentProxy, extractImages } from 'unpdf';
+import { getDocumentProxy, extractImages, renderPageAsImage } from 'unpdf';
 
 export interface ExtractedText {
   text: string;
@@ -72,7 +72,8 @@ async function extractPdf(buffer: Buffer, options: ExtractTextOptions): Promise<
       const worker = await createWorker('eng');
       let ocrText = '';
       for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-        const result = await worker.recognize(Buffer.from([]));
+        const image = await renderPageAsImage(pdf, pageNumber, { scale: 2, canvasImport: async () => await import('@napi-rs/canvas') });
+        const result = await worker.recognize(Buffer.from(image));
         ocrText += result.data.text + '\n';
       }
       await worker.terminate();

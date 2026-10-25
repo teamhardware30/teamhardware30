@@ -32,6 +32,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "ts-node src/modules/crawler/seed-sources.ts",
     "db:seed:sources": "ts-node src/modules/crawler/seed-sources.ts",
+    "db:seed:demo": "ts-node src/modules/auth/seed-demo-users.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
