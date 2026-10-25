@@ -26,8 +26,9 @@ HTMX/Alpine on the client:
   <http://localhost:8025>.
 - Optional: S3-compatible storage (resume uploads), `ANTHROPIC_API_KEY`
   (CV parsing), embedding provider key (profile/job embeddings)
-- Docker is **not** required to run the app, but `pnpm test:e2e` uses
-  Testcontainers and therefore does require a working Docker daemon.
+- Docker is optional for running the app. The included `docker-compose.yml`
+  provides PostgreSQL/pgvector, Redis, Mailpit, and MinIO. `pnpm test:e2e`
+  uses Testcontainers and requires a working Docker daemon.
 
 The repository now includes `docker-compose.yml` for PostgreSQL/pgvector, Redis,
 Mailpit, and MinIO. You can still use an existing Postgres/Redis instance or the
@@ -246,7 +247,19 @@ Then run `pnpm db:migrate`.
 | `CRAWLER_CONTACT_EMAIL` | no | `crawler@job-copilot.local` | Contact address in the crawler user agent |
 | `CRAWLER_REQUESTS_PER_SECOND` | no | `1` | Per-domain rate limit |
 | `CRAWLER_RESPECT_ROBOTS` | no | `true` | Set to `false` only for sources you own |
-| `CRAWLER_TIMEOUT_MS` | no | `20000` | Per-request timeout |
+| `CRAWLER_TIMEOUT_MS` | no | `30000` | Per-request timeout |
+| `CRAWLER_MAX_RESPONSE_BYTES` | no | `5242880` | Maximum crawler response size |
+| `S3_ENDPOINT` | no | — | S3-compatible endpoint, e.g. MinIO |
+| `S3_FORCE_PATH_STYLE` | no | `false` | Use path-style S3 URLs |
+| `RESUME_MAX_PAGES` | no | `20` | Maximum pages parsed from a resume |
+| `RESUME_PROCESSING_TIMEOUT_MS` | no | `120000` | Resume processing timeout |
+| `EMBEDDING_DIMENSIONS` | no | `1024` | Embedding vector length |
+| `APPLY_DAILY_LIMIT` | no | `25` | Daily one-click apply cap |
+| `SCAN_DAILY_LIMIT` | no | `20` | Daily ATS scan cap |
+| `TRUST_PROXY` | no | `false` | Trust reverse-proxy headers |
+| `LOG_LEVEL` | no | `info` | Pino log level |
+| `SENTRY_DSN` | no | — | Optional Sentry DSN |
+| `CLAMAV_REQUIRED` | no | `false` | Fail uploads if ClamAV is unavailable |
 
 Resume upload/parsing and AI features stay disabled until the corresponding
 storage and AI credentials are configured. Everything else runs without them.
@@ -315,12 +328,14 @@ inspect history at `/admin/crawl-runs`.
 | `pnpm css:watch` | Rebuild CSS on change |
 | `pnpm db:generate` | Generate a Drizzle migration from schema changes |
 | `pnpm db:migrate` | Apply pending migrations |
+| `pnpm db:seed` | Seed categories and crawl sources |
 | `pnpm db:seed:sources` | Upsert crawl sources from `sources.yaml` |
 | `pnpm db:studio` | Open Drizzle Studio |
 | `pnpm typecheck` | TypeScript type check |
 | `pnpm lint` | Run ESLint |
 | `pnpm lint:fix` | Run ESLint with fixes |
 | `pnpm format` | Run Prettier |
+| `pnpm format:check` | Check Prettier formatting |
 | `pnpm test` | Unit tests (Vitest) |
 | `pnpm test:unit` | Unit tests (Vitest) |
 | `pnpm test:watch` | Unit tests in watch mode |
