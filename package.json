@@ -135,7 +135,7 @@
     "tailwindcss": "^4.0.0",
     "testcontainers": "^10.16.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.2",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.0",
     "unplugin-swc": "^2.0.0",
     "vitest": "^2.1.6"
