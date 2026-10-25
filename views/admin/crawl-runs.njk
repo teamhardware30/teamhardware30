@@ -1,0 +1,68 @@
+{% extends "layouts/base.njk" %}
+{% from "components/badge.njk" import badge %}
+
+{% block title %}Crawl runs — Job Copilot{% endblock %}
+
+{% block content %}
+  <div class="flex items-baseline justify-between">
+    <div>
+      <h1 class="text-xl font-semibold">Crawl runs</h1>
+      <p class="mt-1 text-sm text-brand-text/60">The 100 most recent crawls across all sources.</p>
+    </div>
+    <a href="/admin/sources" class="text-sm font-medium text-brand-primary hover:underline">← Sources</a>
+  </div>
+
+  <div class="mt-6 overflow-hidden rounded-lg border border-brand-primary/10 bg-white shadow-sm">
+    <table class="min-w-full divide-y divide-brand-text/10 text-sm">
+      <thead class="bg-brand-bg/60 text-left text-xs uppercase tracking-wide text-brand-text/60">
+        <tr>
+          <th class="px-4 py-3 font-medium">Source</th>
+          <th class="px-4 py-3 font-medium">Status</th>
+          <th class="px-4 py-3 font-medium">Started</th>
+          <th class="px-4 py-3 font-medium">Duration</th>
+          <th class="px-4 py-3 text-right font-medium">Found</th>
+          <th class="px-4 py-3 text-right font-medium">New</th>
+          <th class="px-4 py-3 text-right font-medium">Updated</th>
+          <th class="px-4 py-3 text-right font-medium">Skipped</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-brand-text/5">
+        {% for run in runs %}
+          <tr>
+            <td class="px-4 py-3 font-medium">{{ run.sourceName or 'Deleted source' }}</td>
+            <td class="px-4 py-3">
+              {% if run.status == 'success' %}
+                {{ badge('success', 'success') }}
+              {% elif run.status == 'failed' %}
+                {{ badge('failed', 'danger') }}
+              {% elif run.status == 'running' %}
+                {{ badge('running', 'primary') }}
+              {% else %}
+                {{ badge(run.status, 'warning') }}
+              {% endif %}
+              {% if run.error %}
+                <p class="mt-1 max-w-xs truncate text-xs text-red-700" title="{{ run.error }}">{{ run.error }}</p>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-brand-text/70" title="{{ run.startedAt }}">{{ run.startedAt | timeAgo }}</td>
+            <td class="px-4 py-3 text-brand-text/70">
+              {% if run.durationSeconds is not none %}
+                {{ run.durationSeconds }}s
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-right">{{ run.jobsFound }}</td>
+            <td class="px-4 py-3 text-right">{{ run.jobsCreated }}</td>
+            <td class="px-4 py-3 text-right">{{ run.jobsUpdated }}</td>
+            <td class="px-4 py-3 text-right">{{ run.jobsSkipped }}</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="8" class="px-4 py-10 text-center text-brand-text/60">No crawl runs yet.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

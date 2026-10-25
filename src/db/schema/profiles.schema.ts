@@ -1,21 +1,6 @@
-import { pgTable, uuid, text, timestamp, integer, boolean, customType, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, integer, boolean, pgEnum } from 'drizzle-orm/pg-core';
 import { users } from './users.schema';
-
-export const vector = customType<{ data: number[]; driverData: string }>({
-  dataType() {
-    return 'vector(1024)';
-  },
-  toDriver(value: number[]): string {
-    return `[${value.join(',')}]`;
-  },
-  fromDriver(value: string): number[] {
-    return value
-      .slice(1, -1)
-      .split(',')
-      .filter(Boolean)
-      .map(Number);
-  },
-});
+import { vector } from './vector';
 
 export const parseStatusEnum = pgEnum('parse_status', ['pending', 'processing', 'done', 'failed']);
 

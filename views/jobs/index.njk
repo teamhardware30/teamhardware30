@@ -1,0 +1,95 @@
+{% extends "layouts/base.njk" %}
+{% from "components/badge.njk" import badge %}
+
+{% block title %}{{ pageTitle }} — Job Copilot{% endblock %}
+
+{% block content %}
+  <div class="grid gap-8 lg:grid-cols-[280px_1fr]">
+    <aside>
+      <form
+        action="/jobs"
+        method="get"
+        hx-get="/jobs"
+        hx-target="#results"
+        hx-push-url="true"
+        hx-indicator="#search-spinner"
+        class="space-y-5 rounded-lg border border-brand-primary/10 bg-white p-5"
+      >
+        <div>
+          <label for="q" class="text-sm font-medium text-brand-text">Search</label>
+          <input
+            type="search"
+            id="q"
+            name="q"
+            value="{{ filters.q or '' }}"
+            placeholder="Title, skill, or keyword"
+            class="mt-1 w-full rounded-md border border-brand-text/20 px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+          />
+        </div>
+
+        <div>
+          <label for="category" class="text-sm font-medium text-brand-text">Category</label>
+          <select id="category" name="category" class="mt-1 w-full rounded-md border border-brand-text/20 bg-white px-3 py-2 text-sm">
+            <option value="">All categories</option>
+            {% for category in facets.categories %}
+              <option value="{{ category.slug }}" {% if filters.category == category.slug %}selected{% endif %}>
+                {{ category.name }} ({{ category.count }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label for="location" class="text-sm font-medium text-brand-text">Location</label>
+          <input
+            type="text"
+            id="location"
+            name="location"
+            value="{{ filters.location or '' }}"
+            placeholder="City or country"
+            class="mt-1 w-full rounded-md border border-brand-text/20 px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+          />
+        </div>
+
+        <div>
+          <label for="employmentType" class="text-sm font-medium text-brand-text">Employment type</label>
+          <select id="employmentType" name="employmentType" class="mt-1 w-full rounded-md border border-brand-text/20 bg-white px-3 py-2 text-sm">
+            <option value="">Any type</option>
+            {% for type in ['full_time', 'part_time', 'contract', 'internship', 'temporary', 'other'] %}
+              <option value="{{ type }}" {% if filters.employmentType == type %}selected{% endif %}>{{ type | employmentLabel }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label for="postedWithin" class="text-sm font-medium text-brand-text">Posted within</label>
+          <select id="postedWithin" name="postedWithin" class="mt-1 w-full rounded-md border border-brand-text/20 bg-white px-3 py-2 text-sm">
+            <option value="">Any time</option>
+            <option value="24h" {% if filters.postedWithin == '24h' %}selected{% endif %}>Last 24 hours</option>
+            <option value="7d" {% if filters.postedWithin == '7d' %}selected{% endif %}>Last 7 days</option>
+            <option value="30d" {% if filters.postedWithin == '30d' %}selected{% endif %}>Last 30 days</option>
+          </select>
+        </div>
+
+        <label class="flex items-center gap-2 text-sm text-brand-text">
+          <input type="checkbox" name="remote" value="true" {% if filters.remote %}checked{% endif %} class="rounded border-brand-text/20" />
+          Remote only
+        </label>
+
+        <div class="flex items-center gap-3">
+          <button type="submit" class="rounded-md bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90">
+            Search
+          </button>
+          <a href="/jobs" class="text-sm text-brand-text/60 hover:text-brand-primary">Reset</a>
+          <span id="search-spinner" class="htmx-indicator text-xs text-brand-text/50">Searching…</span>
+        </div>
+      </form>
+    </aside>
+
+    <section>
+      <div id="results">
+        {% include "jobs/partials/index.njk" %}
+      </div>
+    </section>
+  </div>
+{% endblock %}

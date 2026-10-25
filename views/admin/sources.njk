@@ -1,0 +1,17 @@
+{% extends "layouts/base.njk" %}
+
+{% block title %}Sources — Job Copilot{% endblock %}
+
+{% block content %}
+  <div class="flex items-baseline justify-between">
+    <div>
+      <h1 class="text-xl font-semibold">Crawl sources</h1>
+      <p class="mt-1 text-sm text-brand-text/60">Enable sources, trigger a crawl, and review the last run.</p>
+    </div>
+    <a href="/admin/crawl-runs" class="text-sm font-medium text-brand-primary hover:underline">Crawl runs →</a>
+  </div>
+
+  <div class="mt-6">
+    {% include "admin/partials/sources.njk" %}
+  </div>
+{% endblock %}

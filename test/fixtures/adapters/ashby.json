@@ -1,0 +1,16 @@
+{
+  "jobs": [
+    {
+      "id": "ash-1",
+      "title": "Frontend Engineer",
+      "location": "Berlin, Germany",
+      "department": "Engineering",
+      "employmentType": "Full-time",
+      "descriptionHtml": "<p>React and TypeScript.</p>",
+      "publishedAt": "2026-10-18T09:00:00Z",
+      "applyUrl": "https://jobs.ashbyhq.com/acme/ash-1/apply",
+      "jobUrl": "https://jobs.ashbyhq.com/acme/ash-1",
+      "isRemote": false
+    }
+  ]
+}

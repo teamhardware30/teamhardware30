@@ -1,0 +1,17 @@
+{
+  "jobs": [
+    {
+      "id": 42,
+      "url": "https://remotive.com/remote-jobs/software-dev/backend-42",
+      "title": "Backend Developer",
+      "company_name": "RemoteCo",
+      "category": "Software Development",
+      "job_type": "full_time",
+      "publication_date": "2026-10-19T12:00:00Z",
+      "candidate_required_location": "Worldwide",
+      "salary": "$90,000 - $120,000",
+      "description": "<p>Remote backend role.</p>",
+      "tags": ["Python", "AWS"]
+    }
+  ]
+}

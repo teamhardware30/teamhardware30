@@ -1,0 +1,51 @@
+{% if isLoadMore %}
+  {% for job in jobs %}
+    {% include "jobs/partials/job-card.njk" %}
+  {% endfor %}
+  <div id="load-more" hx-swap-oob="true" class="mt-6 text-center">
+    {% if nextCursor %}
+      <button
+        type="button"
+        hx-get="{{ nextUrl }}"
+        hx-target="#job-list"
+        hx-swap="beforeend"
+        class="rounded-md border border-brand-primary/20 px-4 py-2 text-sm font-medium text-brand-primary hover:bg-brand-primary/5"
+      >
+        Load more
+      </button>
+    {% endif %}
+  </div>
+{% else %}
+  <div class="flex items-baseline justify-between">
+    <h1 class="text-xl font-semibold">{{ pageTitle }}</h1>
+    <p class="text-sm text-brand-text/60">{{ total }} job{{ '' if total == 1 else 's' }}</p>
+  </div>
+
+  <div id="job-list" class="mt-4 space-y-3">
+    {% for job in jobs %}
+      {% include "jobs/partials/job-card.njk" %}
+    {% else %}
+      <div class="rounded-lg border border-dashed border-brand-text/20 p-10 text-center">
+        <p class="text-sm font-medium text-brand-text">No jobs match those filters</p>
+        <p class="mt-1 text-sm text-brand-text/60">Try a broader search or clear the filters.</p>
+        {% if hasFilters %}
+          <a href="/jobs" class="mt-4 inline-block text-sm font-medium text-brand-primary hover:underline">Clear filters</a>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+
+  <div id="load-more" class="mt-6 text-center">
+    {% if nextCursor %}
+      <button
+        type="button"
+        hx-get="{{ nextUrl }}"
+        hx-target="#job-list"
+        hx-swap="beforeend"
+        class="rounded-md border border-brand-primary/20 px-4 py-2 text-sm font-medium text-brand-primary hover:bg-brand-primary/5"
+      >
+        Load more
+      </button>
+    {% endif %}
+  </div>
+{% endif %}

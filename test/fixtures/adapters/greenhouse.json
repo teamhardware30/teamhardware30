@@ -1,0 +1,13 @@
+{
+  "jobs": [
+    {
+      "id": 123,
+      "title": "Senior Backend Engineer",
+      "absolute_url": "https://boards.greenhouse.io/acme/jobs/123",
+      "updated_at": "2026-10-20T10:00:00Z",
+      "location": { "name": "Nairobi, Kenya" },
+      "content": "<p>Build APIs with TypeScript and Postgres.</p>",
+      "metadata": [{ "name": "Skills", "value": ["TypeScript", "Postgres"] }]
+    }
+  ]
+}

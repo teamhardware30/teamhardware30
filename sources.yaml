@@ -1,0 +1,92 @@
+# Seed data for the crawler. Run `pnpm db:seed:sources` after editing.
+# `kind` selects the adapter: greenhouse | lever | ashby | remotive | arbeitnow | jsonld | html
+sources:
+  # Remotive's robots.txt disallows /api/*, so the polite crawler skips it.
+  # The adapter is implemented and tested; enable this only with a licence or
+  # written permission from Remotive.
+  - name: Remotive
+    kind: remotive
+    baseUrl: https://remotive.com
+    cron: "0 */4 * * *"
+    enabled: false
+    config:
+      limit: 100
+
+  - name: Arbeitnow
+    kind: arbeitnow
+    baseUrl: https://www.arbeitnow.com
+    cron: "30 */6 * * *"
+    enabled: true
+    config:
+      maxPages: 3
+
+  - name: Greenhouse — Stripe
+    kind: greenhouse
+    baseUrl: https://boards.greenhouse.io/stripe
+    cron: "0 */6 * * *"
+    enabled: true
+    config:
+      companies:
+        - token: stripe
+          name: Stripe
+
+  - name: Greenhouse — Figma
+    kind: greenhouse
+    baseUrl: https://boards.greenhouse.io/figma
+    cron: "15 */6 * * *"
+    enabled: true
+    config:
+      companies:
+        - token: figma
+          name: Figma
+
+  - name: Lever — Lever demo board
+    kind: lever
+    baseUrl: https://jobs.lever.co/leverdemo
+    cron: "0 */12 * * *"
+    enabled: false
+    config:
+      companies:
+        - token: leverdemo
+          name: Lever Demo
+
+  - name: Ashby — Ashby demo board
+    kind: ashby
+    baseUrl: https://jobs.ashbyhq.com/ashby
+    cron: "0 */12 * * *"
+    enabled: false
+    config:
+      companies:
+        - token: ashby
+          name: Ashby
+
+  # JSON-LD example: point sitemapUrl at a sitemap containing job detail URLs.
+  - name: Example JSON-LD board
+    kind: jsonld
+    baseUrl: https://example.com
+    cron: "0 5 * * *"
+    enabled: false
+    config:
+      sitemapUrl: https://example.com/sitemap.xml
+      urlPattern: "/jobs/"
+      maxPages: 100
+
+  # HTML example: CSS selectors live entirely in config.
+  - name: Example HTML board
+    kind: html
+    baseUrl: https://example.com
+    cron: "0 6 * * *"
+    enabled: false
+    config:
+      listingUrl: https://example.com/careers
+      itemSelector: ".job-card"
+      paginationSelector: "a.next@href"
+      maxPages: 3
+      fields:
+        title: "h2 a"
+        url: "h2 a@href"
+        company: ".company"
+        location: ".location"
+        description: ".summary"
+        postedAt: "time@datetime"
+      detailDescriptionSelector: ".job-description"

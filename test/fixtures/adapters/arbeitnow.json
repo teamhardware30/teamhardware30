@@ -1,0 +1,17 @@
+{
+  "data": [
+    {
+      "slug": "backend-engineer-berlin",
+      "company_name": "Arbeit Co",
+      "title": "Backend Engineer",
+      "description": "<p>Berlin hybrid role.</p>",
+      "remote": false,
+      "url": "https://www.arbeitnow.com/jobs/companies/arbeit-co/backend-engineer-berlin",
+      "tags": ["Django"],
+      "job_types": ["full_time"],
+      "location": "Berlin, Germany",
+      "created_at": 1760000000
+    }
+  ],
+  "links": { "next": null }
+}

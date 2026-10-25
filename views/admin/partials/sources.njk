@@ -1,0 +1,81 @@
+{% from "components/badge.njk" import badge %}
+<div id="sources-table">
+  {% if message %}
+    <div class="mb-4 rounded-md border border-brand-primary/20 bg-brand-primary/5 px-4 py-3 text-sm text-brand-text">
+      {{ message }}
+    </div>
+  {% endif %}
+
+  <div class="overflow-hidden rounded-lg border border-brand-primary/10 bg-white shadow-sm">
+    <table class="min-w-full divide-y divide-brand-text/10 text-sm">
+      <thead class="bg-brand-bg/60 text-left text-xs uppercase tracking-wide text-brand-text/60">
+        <tr>
+          <th class="px-4 py-3 font-medium">Source</th>
+          <th class="px-4 py-3 font-medium">Kind</th>
+          <th class="px-4 py-3 font-medium">Schedule</th>
+          <th class="px-4 py-3 font-medium">Last run</th>
+          <th class="px-4 py-3 font-medium">Enabled</th>
+          <th class="px-4 py-3 text-right font-medium">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-brand-text/5">
+        {% for source in sources %}
+          <tr>
+            <td class="px-4 py-3">
+              <p class="font-medium text-brand-text">{{ source.name }}</p>
+              <p class="mt-0.5 max-w-xs truncate text-xs text-brand-text/50">{{ source.baseUrl }}</p>
+            </td>
+            <td class="px-4 py-3">{{ badge(source.kind, 'neutral') }}</td>
+            <td class="px-4 py-3 font-mono text-xs text-brand-text/70">{{ source.cron }}</td>
+            <td class="px-4 py-3">
+              {% if source.lastRunAt %}
+                <p class="text-brand-text/70">{{ source.lastRunAt | timeAgo }}</p>
+                <p class="mt-0.5 text-xs">
+                  {% if source.lastRunStatus == 'success' %}
+                    {{ badge('success', 'success') }}
+                  {% elif source.lastRunStatus == 'failed' %}
+                    {{ badge('failed', 'danger') }}
+                  {% elif source.lastRunStatus %}
+                    {{ badge(source.lastRunStatus, 'warning') }}
+                  {% endif %}
+                </p>
+              {% else %}
+                <span class="text-brand-text/40">Never</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3">
+              <button
+                type="button"
+                hx-patch="/admin/sources/{{ source.id }}/toggle"
+                hx-target="#sources-table"
+                hx-swap="outerHTML"
+                class="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium {{ 'bg-green-100 text-green-800' if source.enabled else 'bg-brand-text/10 text-brand-text/60' }}"
+              >
+                <span class="h-1.5 w-1.5 rounded-full {{ 'bg-green-600' if source.enabled else 'bg-brand-text/40' }}"></span>
+                {{ 'Enabled' if source.enabled else 'Disabled' }}
+              </button>
+            </td>
+            <td class="px-4 py-3 text-right">
+              <button
+                type="button"
+                hx-post="/admin/sources/{{ source.id }}/run"
+                hx-target="#sources-table"
+                hx-swap="outerHTML"
+                hx-disabled-elt="this"
+                class="rounded-md border border-brand-primary/20 px-3 py-1.5 text-xs font-medium text-brand-primary hover:bg-brand-primary/5 disabled:opacity-50"
+              >
+                Run now
+              </button>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="6" class="px-4 py-10 text-center text-brand-text/60">
+              No sources yet. Add them to <code>sources.yaml</code> and run <code>pnpm db:seed:sources</code>.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -1,13 +1,20 @@
 {
-  "version": "7",
-  "dialect": "postgresql",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "7",
-      "when": 1792874754001,
-      "tag": "0000_fine_bullseye",
-      "breakpoints": true
-    }
-  ]
+    "version":  "7",
+    "dialect":  "postgresql",
+    "entries":  [
+                    {
+                        "idx":  0,
+                        "version":  "7",
+                        "when":  1792874754001,
+                        "tag":  "0000_fine_bullseye",
+                        "breakpoints":  true
+                    },
+                    {
+                        "idx":  1,
+                        "version":  "7",
+                        "when":  1792884012587,
+                        "tag":  "0001_crawler_jobs",
+                        "breakpoints":  true
+                    }
+                ]
 }

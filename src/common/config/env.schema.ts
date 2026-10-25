@@ -36,6 +36,14 @@ export const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().optional(),
+
+  CRAWLER_CONTACT_EMAIL: z.string().email().default('crawler@job-copilot.local'),
+  CRAWLER_REQUESTS_PER_SECOND: z.coerce.number().positive().default(1),
+  CRAWLER_RESPECT_ROBOTS: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  CRAWLER_TIMEOUT_MS: z.coerce.number().int().positive().default(20_000),
 });
 
 export type Env = z.infer<typeof envSchema>;

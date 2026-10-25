@@ -6,6 +6,11 @@ import { experiences } from './experiences.schema';
 import { educations } from './educations.schema';
 import { skills, profileSkills } from './skills.schema';
 import { resumes } from './resumes.schema';
+import { companies } from './companies.schema';
+import { categories } from './categories.schema';
+import { sources } from './sources.schema';
+import { crawlRuns } from './crawl-runs.schema';
+import { jobs } from './jobs.schema';
 
 export const usersRelations = relations(users, ({ many, one }) => ({
   accounts: many(accounts),
@@ -43,4 +48,29 @@ export const skillsRelations = relations(skills, ({ many }) => ({
 export const profileSkillsRelations = relations(profileSkills, ({ one }) => ({
   profile: one(seekerProfiles, { fields: [profileSkills.profileId], references: [seekerProfiles.id] }),
   skill: one(skills, { fields: [profileSkills.skillId], references: [skills.id] }),
+}));
+
+export const companiesRelations = relations(companies, ({ many }) => ({
+  jobs: many(jobs),
+}));
+
+export const categoriesRelations = relations(categories, ({ one, many }) => ({
+  parent: one(categories, { fields: [categories.parentId], references: [categories.id], relationName: 'parent' }),
+  children: many(categories, { relationName: 'parent' }),
+  jobs: many(jobs),
+}));
+
+export const sourcesRelations = relations(sources, ({ many }) => ({
+  jobs: many(jobs),
+  crawlRuns: many(crawlRuns),
+}));
+
+export const crawlRunsRelations = relations(crawlRuns, ({ one }) => ({
+  source: one(sources, { fields: [crawlRuns.sourceId], references: [sources.id] }),
+}));
+
+export const jobsRelations = relations(jobs, ({ one }) => ({
+  source: one(sources, { fields: [jobs.sourceId], references: [sources.id] }),
+  companyEntity: one(companies, { fields: [jobs.companyId], references: [companies.id] }),
+  category: one(categories, { fields: [jobs.categoryId], references: [categories.id] }),
 }));
