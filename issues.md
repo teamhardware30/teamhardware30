@@ -3,8 +3,9 @@
 ## Here is the issues md file
 > **Source of truth:** `Job Copilot MVP — Build Plan & Prompts` (Oct 24, 2026)
 > **Repository:** [teamhardware30/teamhardware30](https://github.com/teamhardware30/teamhardware30)
-> **Audit baseline:** `0bd43de` — "Scaffold Job Copilot NestJS app with auth, users, and profiles"
-> **Audited:** 2026-10-24
+> **Original audit baseline:** `0bd43de` — "Scaffold Job Copilot NestJS app with auth, users, and profiles"
+> **Current audit:** `1c1de83` on `dev`, after fast-forwarding `dev` to `master`
+> **Re-audited:** 2026-10-25 against Prompts 1–4
 
 This file converts the build plan into an ordered, testable issue backlog. Every task needed to reach the MVP acceptance criteria is listed. Issues are written so they can be copied directly into GitHub Issues (title, labels, milestone, body, acceptance criteria).
 
@@ -25,43 +26,55 @@ This file converts the build plan into an ordered, testable issue backlog. Every
 
 ## 2. Current state audit
 
-The repo is a NestJS scaffold with auth and part of the seeker profile built. It is roughly **mid-week 2** of the 8-week plan.
+Re-audited on 2026-10-25 at `1c1de83` after merging `master` into `dev`. The repository now has working slices for auth, resume ingestion/parsing, crawling, job pages, and crawler administration. It is not yet an end-to-end MVP. Several narrow Prompt 1–4 requirements are implemented and tested, but no whole JC issue in that range met every **Done when** criterion, so this audit does not promote any of them to ✅.
 
-| Area | State | What exists | What is missing |
+| Area | State | What exists now | What is missing or not proven |
 |---|---|---|---|
-| App scaffold | 🟡 Partial | NestJS 11 + Express, `main.ts` / `worker.ts`, Nunjucks, Tailwind input, session + Redis, CSRF, Zod config, Drizzle provider | Docker Compose, README, ESLint config, CI, `/healthz`, helmet, compression, pino, Bull Board, built CSS |
-| Auth | 🟡 Mostly | Local (argon2), Google, LinkedIn OIDC, email verification, Redis throttling, guards, CSRF, tests | Resend verification, OAuth callback tests, employer/role flows, password reset (optional) |
-| Profiles | 🟡 Partial | Onboarding steps 1–4, experience/education/skills CRUD, resume upload to S3, primary resume, profile edit basics, e2e tests | Real CV parsing, LinkedIn ZIP import, profile embedding, full inline CRUD, reorder, `/matches` destination |
-| AI | 🟡 Partial | `AiService.complete()` with retries, repair pass, `aiCalls` logging | Prompt files, `completeJson()` API, `embed()`, provider abstraction, 60 s timeout |
-| Database | 🟡 Partial | 12 tables and relations | 15-table spec alignment, extensions, indexes, migrations, seeds |
-| Jobs / crawler | ❌ Empty | Module shells only | Everything |
-| Matching | ❌ Empty | Module shell only | Everything |
-| ATS scanner | ❌ Empty | Module shell only | Everything |
-| Applications | ❌ Empty | Module shell only | Everything |
-| Admin | ❌ Empty | Module shell only | Everything |
-| Tests | 🟡 Partial | Auth + profiles e2e with Testcontainers | Unit tests, MSW fixtures, adapter tests, scoring tests, Playwright E2E |
-| Ops / security | ❌ Missing | — | Dockerfile, Sentry, ClamAV, data rights, SEO, notifications, backups |
+| App scaffold | 🟡 Partial | NestJS 11 + Express, strict TypeScript, web/worker entrypoints, Nunjucks, Tailwind build, Redis sessions, CSRF, Zod config, Drizzle, README | Docker Compose, complete scripts, worker-only processors, `/healthz`, Helmet/CSP, compression, pino, ping queue, Bull Board, lint/format config, CI |
+| Auth | 🟡 Partial | Argon2 local auth, email verification, Google/LinkedIn strategies, Redis throttling, guards, CSRF, auth e2e | Verified-email OAuth linking, resend verification, OAuth failure tests, safe-`next` fix, employer flows and broader guard tests |
+| Profiles | 🟡 Partial | Onboarding upload/polling/retry, PDF/DOCX/ZIP ingestion, experience/education/skills basics, preferences, multiple resumes, profile e2e | Full inline CRUD/reordering, robust non-JS and 422 form flows, resume preview/download, profile-page ZIP parsing, working `/matches` destination |
+| AI | 🟡 Partial | `completeJson()`, prompt rendering, 60 s request timeout, retry/repair paths, `aiCalls` logging, Voyage/none embedding provider, CV prompt/schema | Exact retry/repair semantics, complete raw-call/token/cost logging, embedding reliability/dimension checks, P1 prompt/schema conformance, AI tests |
+| Database | 🟡 Partial | 17 tables, two migrations, shared `vector(1024)`, extensions and job GIN/HNSW indexes; empty-DB migration smoke passed | UUID v7/helpers, full spec alignment, profile HNSW index, match/ATS/application relations, migration-based e2e, complete seeds |
+| Jobs / crawler | 🟡 Partial | Seven adapters, polite HTTP core, crawl→upsert→dedupe queues, scheduling, stale-job maintenance, source seed, search/detail pages | Reliable run finalization/error persistence, robust HTTP tests and kill switch, full freshness rules, complete filter/pipeline/performance tests; enrichment remains a no-op |
+| Matching | ❌ Empty | Database placeholder only | Scoring, embeddings handoff, `/matches`, explanations, triggers and tests |
+| ATS scanner | ❌ Empty | Database placeholder only | Everything |
+| Applications | ❌ Empty | Database placeholder only | Everything |
+| Admin | 🟡 Partial | Admin-only source controls and latest crawl-run views | Queue dashboard, health/cost metrics, full run stats/error previews, filters/pagination, positive role/action tests |
+| Tests | 🟡 Partial | 22 unit tests and 17 Testcontainers e2e tests pass; adapter fixtures/MSW and migration/seed smoke checks | AiService/embedding tests, full pipeline and wizard tests, malformed/edge fixtures, OAuth/admin/IDOR coverage, Playwright, coverage and isolation |
+| Ops / security | ❌ Missing | Job-detail SEO/sanitization and basic secure session settings | Production middleware/container, Sentry, ClamAV, data rights, full SEO, notifications, backups |
 
-### 2.1 Must-fix deviations in the existing code
+### 2.1 Verification performed on 2026-10-25
 
-These will block later work and should be fixed in Epic 0 before building features on top:
+Environment: Node `24.19.0`, pnpm `9.14.2`, Podman Testcontainers. The project targets Node 22+, but an additional Node 22 runtime matrix run was not performed.
 
-1. `jobs.embedding` is `vector(1536)` but the plan uses **1024** dimensions. The `vector` custom type is also duplicated in `jobs.schema.ts` and `profiles.schema.ts`.
-2. The jobs domain is missing `companies`, `sources`, `crawl_runs`, and `categories` tables.
-3. `jobs` is missing `sourceId`, `externalId`, `companyId`, `applyUrl`, `applyMethod`, `applyEmail`, `country`, `remoteType`, `employmentType`, `seniority`, salary fields, `requiredSkills`, `preferredSkills`, `fingerprint`, `searchVector`, `expiresAt`, `categoryId`, `isActive`.
-4. `matches` does not match the specified `job_matches` shape: no `breakdown`, `explanation`, `status`, `computedAt`, or `(profileId, score DESC)` index.
-5. `ats_scans` requires `jobId` (spec says nullable) and has no `resumeId`, `keywordHits`, `keywordGaps`, `formatIssues`, or structured `suggestions`.
-6. `applications` has no `resumeId`, `answers`, `channel`, `events`, `unique(profileId, jobId)`, and its status enum differs from the spec.
-7. `resumes` has no `source`, `parsedJson`, or `parseStatus`.
-8. `users.role` is `user | admin`; the plan requires `seeker | employer | admin`.
-9. IDs use `defaultRandom()` (UUID v4), not UUID v7.
-10. There are **no migrations**; e2e tests run `drizzle-kit push --force` and manually create extensions.
-11. `AiService` has no `completeJson()`, no prompt loader, no `embed()`, and a 30 s timeout instead of 60 s.
-12. Onboarding redirects to `/matches`, which does not exist yet (404).
-13. `assets/input.css` has no `@source` directive and `public/css/app.css` is not built or committed.
-14. `worker.ts` boots the full `AppModule` rather than processors only.
-15. Missing `dev`, `start:web`, `typecheck`, and `test:unit` scripts; missing `concurrently`, `helmet`, `compression`, `pino-http`, `bull-board`.
-16. No `.github/workflows`, no ESLint config file, no README.
+- `pnpm install --frozen-lockfile` — passed.
+- `pnpm exec tsc --noEmit` — passed.
+- `pnpm build` — passed.
+- `pnpm css:build` — passed.
+- `pnpm test` — **5 files, 22 tests passed**.
+- `pnpm test:e2e` — **3 files, 17 tests passed** on retry. The first attempt timed out during Testcontainers setup; after the Ryuk image was available, the normal command passed.
+- Checked-in migrations against an empty `pgvector/pgvector:pg16` container — both migrations applied; **17 tables**, `vector` and `pg_trgm`, and the expected job indexes were present.
+- `pnpm db:seed:sources` twice against that migrated database — first run created 8 rows, second updated those rows, and the final count remained **8**.
+- `pnpm lint` now passes using the project's ESLint flat configuration.
+- `docker compose config` passes for the new Compose file.
+- `pnpm build`, `pnpm typecheck`, `pnpm test:unit`, and `pnpm test:e2e` all pass after the implementation work.
+
+Passing the existing suite does not prove requirements for which no tests exist. The e2e harness still uses `drizzle-kit push --force`; the separate migration smoke check above does not replace migrating in the harness.
+
+### 2.2 Highest-priority remaining deviations
+
+1. Worker isolation is incomplete: web and worker both import the full module graph and can register processors.
+2. Prompt 1 infrastructure is incomplete: no Compose stack, production middleware, `/healthz`, ping queue, Bull Board, lint/format setup, or CI.
+3. IDs still use UUID v4 defaults rather than UUID v7, and several identity/profile/job/match/ATS/application columns remain unaligned with the data model.
+4. Onboarding redirects to `/matches`, but matching, ATS, and applications are not implemented.
+5. Extracted resume text and structured parsed output are not persisted; parse/embedding errors are swallowed, preventing normal BullMQ retries.
+6. Profile embedding normally does no work because the processor passes a profile ID to a lookup implemented by user ID; manual saves do not trigger re-embedding.
+7. AI retry/repair/logging behavior does not exactly match the contract, and the CV prompt/schema do not match P1.
+8. Many profile/onboarding forms are HTMX-only, and validation does not consistently re-render the originating form with preserved values and field errors.
+9. Crawl completion can be finalized before all batches finish; per-item errors are not persisted, and malformed records can still produce a successful run.
+10. Freshness only handles seven days unseen; expiry, dead-link checks, 45-day behavior, metrics, and tests are incomplete.
+11. E2E tests use schema push rather than the checked-in migrations and lack isolation in places.
+12. Documentation mentions `/api/v1`, but no such controllers or global prefix currently exist.
 
 ---
 
@@ -169,7 +182,7 @@ These will block later work and should be fixed in Epic 0 before building featur
 ---
 
 ### JC-005 · Add the jobs-domain tables
-**Priority:** P0 · **Size:** L · **Status:** ❌ · **Depends on:** JC-004
+**Priority:** P0 · **Size:** L · **Status:** 🟡 · **Depends on:** JC-004
 `area:database` `type:feature`
 
 **Tasks**
@@ -210,7 +223,7 @@ These will block later work and should be fixed in Epic 0 before building featur
 ---
 
 ### JC-007 · Create the first migration with extensions and performance indexes
-**Priority:** P0 · **Size:** M · **Status:** ❌ · **Depends on:** JC-004, JC-005, JC-006
+**Priority:** P0 · **Size:** M · **Status:** 🟡 · **Depends on:** JC-004, JC-005, JC-006
 `area:database` `type:infra`
 
 **Tasks**
@@ -232,7 +245,7 @@ These will block later work and should be fixed in Epic 0 before building featur
 ---
 
 ### JC-008 · Add seed scripts
-**Priority:** P0 · **Size:** M · **Status:** ❌ · **Depends on:** JC-007
+**Priority:** P0 · **Size:** M · **Status:** 🟡 · **Depends on:** JC-007
 `area:database` `type:feature`
 
 **Tasks**
@@ -453,7 +466,7 @@ These will block later work and should be fixed in Epic 0 before building featur
 ---
 
 ### JC-018 · Implement `AiService.embed()` and the embedding provider
-**Priority:** P0 · **Size:** M · **Status:** ❌ · **Depends on:** JC-017
+**Priority:** P0 · **Size:** M · **Status:** 🟡 · **Depends on:** JC-017
 `area:ai` `type:feature`
 
 **Tasks**
@@ -474,7 +487,7 @@ These will block later work and should be fixed in Epic 0 before building featur
 ---
 
 ### JC-019 · Implement text extraction for PDF, DOCX, and scans
-**Priority:** P0 · **Size:** L · **Status:** ❌ · **Depends on:** JC-017
+**Priority:** P0 · **Size:** L · **Status:** 🟡 · **Depends on:** JC-017
 `area:profiles` `type:feature`
 
 **Tasks**
@@ -496,7 +509,7 @@ These will block later work and should be fixed in Epic 0 before building featur
 ---
 
 ### JC-020 · Add the `ParsedResume` schema and CV parse prompt
-**Priority:** P0 · **Size:** M · **Status:** ❌ · **Depends on:** JC-017
+**Priority:** P0 · **Size:** M · **Status:** 🟡 · **Depends on:** JC-017
 `area:ai` `type:feature`
 
 **Tasks**
@@ -542,7 +555,7 @@ These will block later work and should be fixed in Epic 0 before building featur
 ---
 
 ### JC-022 · Implement LinkedIn data-export ZIP import
-**Priority:** P1 · **Size:** L · **Status:** ❌ · **Depends on:** JC-021
+**Priority:** P1 · **Size:** L · **Status:** 🟡 · **Depends on:** JC-021
 `area:profiles` `type:feature`
 
 **Tasks**
@@ -564,7 +577,7 @@ These will block later work and should be fixed in Epic 0 before building featur
 ---
 
 ### JC-023 · Recompute profile embeddings on save
-**Priority:** P0 · **Size:** M · **Status:** ❌ · **Depends on:** JC-018, JC-021
+**Priority:** P0 · **Size:** M · **Status:** 🟡 · **Depends on:** JC-018, JC-021
 `area:profiles` `type:feature`
 
 **Tasks**
@@ -609,7 +622,7 @@ These will block later work and should be fixed in Epic 0 before building featur
 ## Epic 2 — Crawler and jobs (M2)
 
 ### JC-025 · Define the `SourceAdapter` contract and `JobDto`
-**Priority:** P0 · **Size:** M · **Status:** ❌ · **Depends on:** JC-005, JC-007
+**Priority:** P0 · **Size:** M · **Status:** 🟡 · **Depends on:** JC-005, JC-007
 `area:crawler` `type:feature`
 
 **Tasks**
@@ -630,7 +643,7 @@ These will block later work and should be fixed in Epic 0 before building featur
 ---
 
 ### JC-026 · Build the polite HTTP client
-**Priority:** P0 · **Size:** L · **Status:** ❌ · **Depends on:** JC-025
+**Priority:** P0 · **Size:** L · **Status:** 🟡 · **Depends on:** JC-025
 `area:crawler` `type:feature`
 
 **Tasks**
@@ -654,7 +667,7 @@ These will block later work and should be fixed in Epic 0 before building featur
 ---
 
 ### JC-027 · Implement ATS board adapters
-**Priority:** P0 · **Size:** L · **Status:** ❌ · **Depends on:** JC-026
+**Priority:** P0 · **Size:** L · **Status:** 🟡 · **Depends on:** JC-026
 `area:crawler` `type:feature`
 
 **Tasks**
@@ -677,7 +690,7 @@ These will block later work and should be fixed in Epic 0 before building featur
 ---
 
 ### JC-028 · Implement aggregator and feed adapters
-**Priority:** P1 · **Size:** L · **Status:** ❌ · **Depends on:** JC-026
+**Priority:** P1 · **Size:** L · **Status:** 🟡 · **Depends on:** JC-026
 `area:crawler` `type:feature`
 
 **Tasks**
@@ -699,7 +712,7 @@ These will block later work and should be fixed in Epic 0 before building featur
 ---
 
 ### JC-029 · Implement JSON-LD and HTML adapters
-**Priority:** P1 · **Size:** L · **Status:** ❌ · **Depends on:** JC-026
+**Priority:** P1 · **Size:** L · **Status:** 🟡 · **Depends on:** JC-026
 `area:crawler` `type:feature`
 
 **Tasks**
@@ -721,7 +734,7 @@ These will block later work and should be fixed in Epic 0 before building featur
 ---
 
 ### JC-030 · Build the crawl → upsert → dedupe pipeline
-**Priority:** P0 · **Size:** XL · **Status:** ❌ · **Depends on:** JC-027, JC-028, JC-029
+**Priority:** P0 · **Size:** XL · **Status:** 🟡 · **Depends on:** JC-027, JC-028, JC-029
 `area:crawler` `type:feature`
 
 **Tasks**
@@ -745,7 +758,7 @@ These will block later work and should be fixed in Epic 0 before building featur
 ---
 
 ### JC-031 · Add source schedulers, seeding, and admin controls
-**Priority:** P0 · **Size:** L · **Status:** ❌ · **Depends on:** JC-030
+**Priority:** P0 · **Size:** L · **Status:** 🟡 · **Depends on:** JC-030
 `area:crawler` `type:feature`
 
 **Tasks**
@@ -767,7 +780,7 @@ These will block later work and should be fixed in Epic 0 before building featur
 ---
 
 ### JC-032 · Implement freshness and expiry handling
-**Priority:** P1 · **Size:** M · **Status:** ❌ · **Depends on:** JC-030
+**Priority:** P1 · **Size:** M · **Status:** 🟡 · **Depends on:** JC-030
 `area:crawler` `type:feature`
 
 **Tasks**
@@ -789,7 +802,7 @@ These will block later work and should be fixed in Epic 0 before building featur
 ---
 
 ### JC-033 · Build the `/jobs` search page
-**Priority:** P0 · **Size:** XL · **Status:** ❌ · **Depends on:** JC-005, JC-007, JC-030
+**Priority:** P0 · **Size:** XL · **Status:** 🟡 · **Depends on:** JC-005, JC-007, JC-030
 `area:jobs` `type:feature`
 
 **Tasks**
@@ -814,7 +827,7 @@ These will block later work and should be fixed in Epic 0 before building featur
 ---
 
 ### JC-034 · Build the `/jobs/:id` detail page
-**Priority:** P0 · **Size:** L · **Status:** ❌ · **Depends on:** JC-033
+**Priority:** P0 · **Size:** L · **Status:** 🟡 · **Depends on:** JC-033
 `area:jobs` `type:feature`
 
 **Tasks**
@@ -838,7 +851,7 @@ These will block later work and should be fixed in Epic 0 before building featur
 ---
 
 ### JC-035 · Add crawler and jobs test coverage
-**Priority:** P1 · **Size:** L · **Status:** ❌ · **Depends on:** JC-030, JC-033
+**Priority:** P1 · **Size:** L · **Status:** 🟡 · **Depends on:** JC-030, JC-033
 `area:testing` `type:chore`
 
 **Tasks**

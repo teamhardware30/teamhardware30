@@ -1,0 +1,14 @@
+{% if explanation %}
+  <div class="rounded-md border border-brand-text/10 bg-brand-bg p-3 text-sm">
+    <p class="font-medium text-brand-text">{{ explanation.verdict | title }}</p>
+    <ul class="mt-2 list-disc space-y-1 pl-5">
+      {% for reason in explanation.why_it_fits %}<li>{{ reason }}</li>{% endfor %}
+    </ul>
+    {% if explanation.gaps %}
+      <p class="mt-2 font-medium text-brand-text">Gaps</p>
+      <ul class="list-disc space-y-1 pl-5">
+        {% for gap in explanation.gaps %}<li>{{ gap }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+{% endif %}

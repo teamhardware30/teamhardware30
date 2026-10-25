@@ -7,62 +7,103 @@
   <div class="flex items-baseline justify-between">
     <div>
       <h1 class="text-xl font-semibold">Crawl runs</h1>
-      <p class="mt-1 text-sm text-brand-text/60">The 100 most recent crawls across all sources.</p>
+      <p class="mt-1 text-sm text-brand-text/60">Inspect batch progress, counters, and per-item failures.</p>
     </div>
     <a href="/admin/sources" class="text-sm font-medium text-brand-primary hover:underline">← Sources</a>
   </div>
 
-  <div class="mt-6 overflow-hidden rounded-lg border border-brand-primary/10 bg-white shadow-sm">
+  <form action="/admin/crawl-runs" method="get" class="mt-6 flex flex-wrap items-end gap-3 rounded-lg border border-brand-primary/10 bg-white p-4">
+    <div>
+      <label for="sourceId" class="block text-xs font-medium text-brand-text/60">Source</label>
+      <select id="sourceId" name="sourceId" class="mt-1 rounded-md border border-brand-text/20 bg-white px-3 py-2 text-sm">
+        <option value="">All sources</option>
+        {% for source in sources %}
+          <option value="{{ source.id }}" {% if filters.sourceId == source.id %}selected{% endif %}>{{ source.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="status" class="block text-xs font-medium text-brand-text/60">Status</label>
+      <select id="status" name="status" class="mt-1 rounded-md border border-brand-text/20 bg-white px-3 py-2 text-sm">
+        <option value="">All statuses</option>
+        {% for value in ['running', 'success', 'partial', 'failed'] %}
+          <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ value }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="rounded-md bg-brand-primary px-4 py-2 text-sm font-medium text-white">Filter</button>
+    <a href="/admin/crawl-runs" class="px-2 py-2 text-sm text-brand-text/60 hover:text-brand-primary">Reset</a>
+  </form>
+
+  <div class="mt-6 overflow-x-auto rounded-lg border border-brand-primary/10 bg-white shadow-sm">
     <table class="min-w-full divide-y divide-brand-text/10 text-sm">
       <thead class="bg-brand-bg/60 text-left text-xs uppercase tracking-wide text-brand-text/60">
         <tr>
-          <th class="px-4 py-3 font-medium">Source</th>
-          <th class="px-4 py-3 font-medium">Status</th>
-          <th class="px-4 py-3 font-medium">Started</th>
-          <th class="px-4 py-3 font-medium">Duration</th>
+          <th class="px-4 py-3 font-medium">Source / status</th>
+          <th class="px-4 py-3 font-medium">Started / duration</th>
+          <th class="px-4 py-3 font-medium">Batches</th>
           <th class="px-4 py-3 text-right font-medium">Found</th>
           <th class="px-4 py-3 text-right font-medium">New</th>
           <th class="px-4 py-3 text-right font-medium">Updated</th>
           <th class="px-4 py-3 text-right font-medium">Skipped</th>
+          <th class="px-4 py-3 font-medium">Errors</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-brand-text/5">
         {% for run in runs %}
           <tr>
-            <td class="px-4 py-3 font-medium">{{ run.sourceName or 'Deleted source' }}</td>
-            <td class="px-4 py-3">
-              {% if run.status == 'success' %}
-                {{ badge('success', 'success') }}
-              {% elif run.status == 'failed' %}
-                {{ badge('failed', 'danger') }}
-              {% elif run.status == 'running' %}
-                {{ badge('running', 'primary') }}
+            <td class="px-4 py-3 align-top">
+              <p class="font-medium">{{ run.sourceName or 'Deleted source' }}</p>
+              <p class="mt-1">
+                {% if run.status == 'success' %}{{ badge('success', 'success') }}
+                {% elif run.status == 'failed' %}{{ badge('failed', 'danger') }}
+                {% elif run.status == 'running' %}{{ badge('running', 'primary') }}
+                {% else %}{{ badge(run.status, 'warning') }}{% endif %}
+              </p>
+            </td>
+            <td class="px-4 py-3 align-top text-brand-text/70">
+              <span title="{{ run.startedAt }}">{{ run.startedAt | timeAgo }}</span>
+              <p class="mt-1 text-xs">{{ run.durationSeconds + 's' if run.durationSeconds is not none else '—' }}</p>
+            </td>
+            <td class="px-4 py-3 align-top text-brand-text/70">{{ run.batchesCompleted }}/{{ run.batchesTotal }}</td>
+            <td class="px-4 py-3 text-right align-top">{{ run.jobsFound }}</td>
+            <td class="px-4 py-3 text-right align-top">{{ run.jobsCreated }}</td>
+            <td class="px-4 py-3 text-right align-top">{{ run.jobsUpdated }}</td>
+            <td class="px-4 py-3 text-right align-top">{{ run.jobsSkipped }}</td>
+            <td class="px-4 py-3 align-top">
+              {% if run.errorCount > 0 %}
+                <details class="max-w-md text-xs text-red-700">
+                  <summary class="cursor-pointer">{{ run.errorCount }} item error{{ '' if run.errorCount == 1 else 's' }}</summary>
+                  <ul class="mt-2 space-y-2">
+                    {% for item in run.errors.slice(0, 20) %}
+                      <li>
+                        <strong>{{ item.stage }}</strong>: {{ item.reason }}
+                        {% if item.sourceUrl %}<br /><span class="break-all text-brand-text/50">{{ item.sourceUrl }}</span>{% endif %}
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </details>
+              {% elif run.error %}
+                <p class="max-w-xs text-xs text-red-700">{{ run.error }}</p>
               {% else %}
-                {{ badge(run.status, 'warning') }}
-              {% endif %}
-              {% if run.error %}
-                <p class="mt-1 max-w-xs truncate text-xs text-red-700" title="{{ run.error }}">{{ run.error }}</p>
+                <span class="text-brand-text/40">—</span>
               {% endif %}
             </td>
-            <td class="px-4 py-3 text-brand-text/70" title="{{ run.startedAt }}">{{ run.startedAt | timeAgo }}</td>
-            <td class="px-4 py-3 text-brand-text/70">
-              {% if run.durationSeconds is not none %}
-                {{ run.durationSeconds }}s
-              {% else %}
-                —
-              {% endif %}
-            </td>
-            <td class="px-4 py-3 text-right">{{ run.jobsFound }}</td>
-            <td class="px-4 py-3 text-right">{{ run.jobsCreated }}</td>
-            <td class="px-4 py-3 text-right">{{ run.jobsUpdated }}</td>
-            <td class="px-4 py-3 text-right">{{ run.jobsSkipped }}</td>
           </tr>
         {% else %}
-          <tr>
-            <td colspan="8" class="px-4 py-10 text-center text-brand-text/60">No crawl runs yet.</td>
-          </tr>
+          <tr><td colspan="8" class="px-4 py-10 text-center text-brand-text/60">No crawl runs match these filters.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+
+  <nav class="mt-5 flex items-center justify-between text-sm" aria-label="Crawl run pages">
+    {% if page > 1 %}
+      <a class="text-brand-primary hover:underline" href="/admin/crawl-runs?page={{ page - 1 }}{% if filters.sourceId %}&sourceId={{ filters.sourceId | urlencode }}{% endif %}{% if filters.status %}&status={{ filters.status | urlencode }}{% endif %}">← Previous</a>
+    {% else %}<span></span>{% endif %}
+    <span class="text-brand-text/60">Page {{ page }}</span>
+    {% if hasNext %}
+      <a class="text-brand-primary hover:underline" href="/admin/crawl-runs?page={{ page + 1 }}{% if filters.sourceId %}&sourceId={{ filters.sourceId | urlencode }}{% endif %}{% if filters.status %}&status={{ filters.status | urlencode }}{% endif %}">Next →</a>
+    {% else %}<span></span>{% endif %}
+  </nav>
 {% endblock %}

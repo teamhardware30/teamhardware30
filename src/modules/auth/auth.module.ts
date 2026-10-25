@@ -1,15 +1,16 @@
 import { Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { ConfigService } from '@nestjs/config';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
-import { LocalStrategy } from './strategies/local.strategy';
-import { LinkedinStrategy } from './strategies/linkedin.strategy';
-import { GoogleStrategy } from './strategies/google.strategy';
-import { UsersModule } from '../users/users.module';
 import { MailModule } from '../../common/mail/mail.module';
 import { RedisThrottlerStorage } from '../../common/throttler/redis-throttler.storage';
+import { UsersModule } from '../users/users.module';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { GoogleOAuthGuard, LinkedinOAuthGuard } from './guards/oauth.guard';
+import { GoogleStrategy } from './strategies/google.strategy';
+import { LinkedinStrategy } from './strategies/linkedin.strategy';
+import { LocalStrategy } from './strategies/local.strategy';
 
 @Module({
   imports: [
@@ -28,6 +29,8 @@ import { RedisThrottlerStorage } from '../../common/throttler/redis-throttler.st
   providers: [
     AuthService,
     LocalStrategy,
+    GoogleOAuthGuard,
+    LinkedinOAuthGuard,
     {
       provide: LinkedinStrategy,
       inject: [ConfigService, AuthService],

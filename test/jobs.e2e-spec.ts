@@ -1,14 +1,15 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import request from 'supertest';
-import { createTestApp, closeTestApp, TestContext } from './setup-e2e';
-import { DRIZZLE, Database } from '../src/db/db.provider';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { Database } from '../src/db/db.provider';
+import { DRIZZLE } from '../src/db/db.provider';
 import { categories, jobs } from '../src/db/schema';
 import { jobFingerprint } from '../src/modules/crawler/crawler.utils';
+import { createTestApp, closeTestApp } from './setup-e2e';
+import { TestContext } from './setup-e2e';
 
 describe('Jobs (e2e)', () => {
   let ctx: TestContext;
   let db: Database;
-  let categoryId: string;
   let firstJobId: string;
 
   beforeAll(async () => {
@@ -19,7 +20,6 @@ describe('Jobs (e2e)', () => {
       .insert(categories)
       .values({ name: 'Engineering', slug: 'engineering' })
       .returning();
-    categoryId = category.id;
 
     const base = Date.now();
     const rows = Array.from({ length: 25 }, (_, index) => {

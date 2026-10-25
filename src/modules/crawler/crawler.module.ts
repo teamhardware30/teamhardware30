@@ -1,7 +1,18 @@
-import { Module, OnModuleDestroy, Inject } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
+import { Module, Inject } from '@nestjs/common';
+import { OnModuleDestroy} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { AiModule } from '../ai/ai.module';
+import { AdapterRegistry } from './adapters/adapter.registry';
+import { ArbeitnowAdapter } from './adapters/arbeitnow.adapter';
+import { AshbyAdapter } from './adapters/ashby.adapter';
+import { GreenhouseAdapter } from './adapters/greenhouse.adapter';
+import { HtmlAdapter } from './adapters/html.adapter';
+import { JsonLdAdapter } from './adapters/jsonld.adapter';
+import { LeverAdapter } from './adapters/lever.adapter';
+import { RemotiveAdapter } from './adapters/remotive.adapter';
+import { CrawlSourceProcessor } from './crawl-source.processor';
 import {
   CRAWL_SOURCE_QUEUE,
   CRAWLER_REDIS,
@@ -10,26 +21,23 @@ import {
   MAINTENANCE_QUEUE,
   UPSERT_JOBS_QUEUE,
 } from './crawler.constants';
-import { CrawlerHttp } from './http';
-import { AdapterRegistry } from './adapters/adapter.registry';
-import { GreenhouseAdapter } from './adapters/greenhouse.adapter';
-import { LeverAdapter } from './adapters/lever.adapter';
-import { AshbyAdapter } from './adapters/ashby.adapter';
-import { RemotiveAdapter } from './adapters/remotive.adapter';
-import { ArbeitnowAdapter } from './adapters/arbeitnow.adapter';
-import { JsonLdAdapter } from './adapters/jsonld.adapter';
-import { HtmlAdapter } from './adapters/html.adapter';
-import { CrawlerService } from './crawler.service';
-import { DedupeService } from './dedupe.service';
-import { CrawlSourceProcessor } from './crawl-source.processor';
-import { UpsertJobsProcessor } from './upsert-jobs.processor';
-import { DedupeProcessor } from './dedupe.processor';
-import { EnrichJobProcessor } from './enrich-job.processor';
-import { MaintenanceProcessor } from './maintenance.processor';
 import { CrawlerScheduler } from './crawler.scheduler';
+import { CrawlerService } from './crawler.service';
+import { DedupeProcessor } from './dedupe.processor';
+import { DedupeService } from './dedupe.service';
+import { EnrichJobProcessor } from './enrich-job.processor';
+import { CrawlerHttp } from './http';
+import { JobEnrichmentService } from './job-enrichment.service';
+import { MaintenanceProcessor } from './maintenance.processor';
+import { UpsertJobsProcessor } from './upsert-jobs.processor';
+
+const crawlerProcessors = process.env.WORKER === 'true'
+  ? [CrawlSourceProcessor, UpsertJobsProcessor, DedupeProcessor, EnrichJobProcessor, MaintenanceProcessor]
+  : [];
 
 @Module({
   imports: [
+    AiModule,
     BullModule.registerQueue(
       { name: CRAWL_SOURCE_QUEUE },
       { name: UPSERT_JOBS_QUEUE },
@@ -56,12 +64,9 @@ import { CrawlerScheduler } from './crawler.scheduler';
     AdapterRegistry,
     CrawlerService,
     DedupeService,
-    CrawlSourceProcessor,
-    UpsertJobsProcessor,
-    DedupeProcessor,
-    EnrichJobProcessor,
-    MaintenanceProcessor,
+    JobEnrichmentService,
     CrawlerScheduler,
+    ...crawlerProcessors,
   ],
   exports: [CrawlerService, AdapterRegistry, CrawlerScheduler],
 })

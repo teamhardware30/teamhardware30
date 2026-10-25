@@ -1,20 +1,41 @@
 {
-    "version":  "7",
-    "dialect":  "postgresql",
-    "entries":  [
-                    {
-                        "idx":  0,
-                        "version":  "7",
-                        "when":  1792874754001,
-                        "tag":  "0000_fine_bullseye",
-                        "breakpoints":  true
-                    },
-                    {
-                        "idx":  1,
-                        "version":  "7",
-                        "when":  1792884012587,
-                        "tag":  "0001_crawler_jobs",
-                        "breakpoints":  true
-                    }
-                ]
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792874754001,
+      "tag": "0000_fine_bullseye",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792884012587,
+      "tag": "0001_crawler_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792890000000,
+      "tag": "0002_uuid_and_enum_values",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792890000001,
+      "tag": "0003_prompt_alignment",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792960246004,
+      "tag": "0004_clear_golden_guardian",
+      "breakpoints": true
+    }
+  ]
 }

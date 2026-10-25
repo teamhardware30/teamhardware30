@@ -1,0 +1,13 @@
+{% macro alert(message, opts={}) %}
+  {% set variant = opts.variant or 'info' %}
+  {% set tones = {
+    'info': 'border-brand-primary/20 bg-brand-primary/10 text-brand-primary',
+    'success': 'border-brand-primary/20 bg-brand-primary/10 text-brand-primary',
+    'warning': 'border-amber-200 bg-amber-50 text-amber-800',
+    'error': 'border-red-200 bg-red-50 text-red-700'
+  } %}
+  <div class="rounded-md border px-4 py-3 text-sm {{ tones[variant] }}" role="{{ 'alert' if variant == 'error' else 'status' }}">
+    {% if opts.title %}<p class="font-medium">{{ opts.title }}</p>{% endif %}
+    <p {% if opts.title %}class="mt-1"{% endif %}>{{ message }}</p>
+  </div>
+{% endmacro %}

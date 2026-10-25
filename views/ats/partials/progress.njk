@@ -1,0 +1,9 @@
+<div id="ats-progress" class="rounded-lg border border-brand-primary/20 bg-white p-6 text-center">
+  {% if status == 'failed' %}
+    <p class="text-red-700">{{ error or 'Scan failed.' }}</p>
+  {% else %}
+    <p class="text-brand-text">Scanning your CV…</p>
+    <div class="mt-4 h-2 animate-pulse rounded bg-brand-text/10"></div>
+    <div hx-get="/ats/scans/{{ jobId }}/status" hx-trigger="every 2s" hx-target="#ats-progress" hx-swap="outerHTML"></div>
+  {% endif %}
+</div>

@@ -78,10 +78,69 @@ export function normalizeEmploymentType(value?: string | null): JobDtoEmployment
   const normalized = normalizeText(value);
   if (/intern/.test(normalized)) return 'internship';
   if (/part time|parttime/.test(normalized)) return 'part_time';
-  if (/contract|freelance|temporary|temp\b/.test(normalized)) return 'contract';
+  if (/temporary|temp\b/.test(normalized)) return 'temporary';
+  if (/contract|freelance/.test(normalized)) return 'contract';
   if (/full time|fulltime|permanent/.test(normalized)) return 'full_time';
-  if (/temporary/.test(normalized)) return 'temporary';
   return 'other';
 }
 
 type JobDtoEmploymentType = 'full_time' | 'part_time' | 'contract' | 'internship' | 'temporary' | 'other';
+
+/** Only content that should trigger downstream enrichment belongs in this hash. */
+export function jobContentHash(job: { title: string; descriptionText: string }): string {
+  return createHash('sha1').update(`${job.title.trim()}\n${job.descriptionText.trim()}`).digest('hex');
+}
+
+/** Merge useful missing fields without changing the canonical posting's identity. */
+export function mergedJobFields<T extends {
+  applyUrl: string | null;
+  applyEmail: string | null;
+  location: string | null;
+  city: string | null;
+  country: string | null;
+  employmentType: string | null;
+  descriptionHtml: string;
+  descriptionText: string;
+  skills: string[];
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryCurrency: string | null;
+  salaryPeriod: string | null;
+  postedAt: Date | null;
+  expiresAt: Date | null;
+  lastSeenAt: Date;
+}>(canonical: T, duplicate: T): Partial<T> {
+  const merged: Record<string, unknown> = {};
+  const nullableKeys = [
+    'applyUrl',
+    'applyEmail',
+    'location',
+    'city',
+    'country',
+    'employmentType',
+    'salaryMin',
+    'salaryMax',
+    'salaryCurrency',
+    'salaryPeriod',
+    'postedAt',
+    'expiresAt',
+  ] as const;
+
+  for (const key of nullableKeys) {
+    if (canonical[key] === null && duplicate[key] !== null) {
+      merged[key] = duplicate[key];
+    }
+  }
+  if (!canonical.descriptionText.trim() && duplicate.descriptionText.trim()) {
+    merged.descriptionHtml = duplicate.descriptionHtml;
+    merged.descriptionText = duplicate.descriptionText;
+  }
+  const skills = [...new Set([...canonical.skills, ...duplicate.skills])];
+  if (skills.length !== canonical.skills.length) {
+    merged.skills = skills;
+  }
+  if (duplicate.lastSeenAt > canonical.lastSeenAt) {
+    merged.lastSeenAt = duplicate.lastSeenAt;
+  }
+  return merged as Partial<T>;
+}

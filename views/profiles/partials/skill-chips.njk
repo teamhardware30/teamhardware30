@@ -1,15 +1,11 @@
-{% from "components/badge.njk" import badge %}
 <div id="skill-chips" class="flex flex-wrap gap-2">
   {% for ps in profileSkills %}
-    <span class="inline-flex items-center gap-1 rounded-full bg-brand-primary/10 px-3 py-1 text-xs font-medium text-brand-primary">
+    <span class="inline-flex items-center gap-1 rounded-full bg-brand-primary/10 px-3 py-1 text-xs font-medium text-brand-primary {% if ps.skill.needsReview %}border border-amber-400{% endif %}">
       {{ ps.skill.name }}
-      <button
-        type="button"
-        hx-delete="/onboarding/skills/{{ ps.skill.id }}"
-        hx-target="#skill-chips"
-        hx-swap="outerHTML"
-        class="text-brand-primary/60 hover:text-brand-primary"
-      >&times;</button>
+      <form method="post" action="/onboarding/skills/{{ ps.skill.id }}/delete" hx-post="/onboarding/skills/{{ ps.skill.id }}/delete" hx-target="#skill-chips" hx-swap="outerHTML">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}" /><input type="hidden" name="returnTo" value="{{ returnTo or '/onboarding' }}" />
+        <button type="submit" class="text-brand-primary/60 hover:text-brand-primary" aria-label="Remove {{ ps.skill.name }}">&times;</button>
+      </form>
     </span>
   {% else %}
     <p class="text-sm text-brand-text/50">No skills added yet.</p>

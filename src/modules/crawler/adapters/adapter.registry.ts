@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { Source } from '../../../db/schema';
-import { SourceAdapter } from './source-adapter.interface';
-import { GreenhouseAdapter } from './greenhouse.adapter';
-import { LeverAdapter } from './lever.adapter';
-import { AshbyAdapter } from './ashby.adapter';
-import { RemotiveAdapter } from './remotive.adapter';
 import { ArbeitnowAdapter } from './arbeitnow.adapter';
-import { JsonLdAdapter } from './jsonld.adapter';
+import { AshbyAdapter } from './ashby.adapter';
+import { GreenhouseAdapter } from './greenhouse.adapter';
 import { HtmlAdapter } from './html.adapter';
+import { JsonLdAdapter } from './jsonld.adapter';
+import { LeverAdapter } from './lever.adapter';
+import { RemotiveAdapter } from './remotive.adapter';
+import { SourceAdapter } from './source-adapter.interface';
 
 @Injectable()
 export class AdapterRegistry {

@@ -1,47 +1,97 @@
+import { randomBytes, randomUUID } from 'crypto';
+import { join } from 'path';
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import express from 'express';
-import session from 'express-session';
+import compression from 'compression';
 import RedisStore from 'connect-redis';
-import Redis from 'ioredis';
-import passport from 'passport';
 import cookieParser from 'cookie-parser';
-import { join } from 'path';
+import express, { type NextFunction, type Request, type Response } from 'express';
+import session from 'express-session';
+import helmet from 'helmet';
+import type Redis from 'ioredis';
+import passport from 'passport';
+import { pinoHttp } from 'pino-http';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { LocalsInterceptor } from './common/interceptors/locals.interceptor';
+import { HtmxRenderInterceptor } from './common/interceptors/render.interceptor';
+import { configureBullBoard } from './common/queues/bull-board';
+import { REDIS_CLIENT } from './common/redis/redis.constants';
 import { doubleCsrfProtection } from './common/security/csrf';
 import { configureViews } from './common/view/nunjucks';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-import { HtmxRenderInterceptor } from './common/interceptors/render.interceptor';
-import { LocalsInterceptor } from './common/interceptors/locals.interceptor';
 import { UsersService } from './modules/users/users.service';
 
-/**
- * Shared Express/Nest wiring (session, passport, CSRF, views, global
- * filters/interceptors) used by both the production entrypoint and
- * e2e tests, so tests exercise the exact same middleware stack.
- */
+/** Shared production and e2e Express/Nest middleware wiring. */
 export function configureApp(app: NestExpressApplication): void {
   const config = app.get(ConfigService);
   const expressApp = app.getHttpAdapter().getInstance();
+  const production = config.get<string>('NODE_ENV') === 'production';
 
-  const redisClient = new Redis(config.get<string>('REDIS_URL') ?? 'redis://localhost:6379');
+  app.set('trust proxy', config.get<boolean>('TRUST_PROXY') ?? false);
+  app.use(
+    pinoHttp({
+      level: config.get<string>('NODE_ENV') === 'test' ? 'silent' : (config.get<string>('LOG_LEVEL') ?? 'info'),
+      genReqId: (req, res) => {
+        const requestId = req.headers['x-request-id'];
+        const id = typeof requestId === 'string' && requestId.length <= 128 ? requestId : randomUUID();
+        res.setHeader('x-request-id', id);
+        return id;
+      },
+      redact: {
+        paths: [
+          'req.headers.authorization',
+          'req.headers.cookie',
+          'req.body.password',
+          'req.body.rawText',
+          'req.body.resumeText',
+          'req.body.cvText',
+          'res.headers["set-cookie"]',
+        ],
+        censor: '[redacted]',
+      },
+      autoLogging: { ignore: (req) => req.url === '/healthz' },
+    }),
+  );
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    res.locals.cspNonce = randomBytes(16).toString('base64');
+    next();
+  });
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-eval'"],
+          styleSrc: ["'self'"],
+          imgSrc: ["'self'", 'data:', 'https://images.unsplash.com'],
+          connectSrc: ["'self'"],
+          fontSrc: ["'self'"],
+          objectSrc: ["'none'"],
+          baseUri: ["'self'"],
+          formAction: ["'self'"],
+          frameAncestors: ["'none'"],
+          upgradeInsecureRequests: production ? null : null,
+        },
+      },
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
+  app.use(compression());
 
-  // Registered explicitly (rather than relying on Nest's own default
-  // body-parser) so req.body is reliably populated before the CSRF
-  // middleware below reads it — Nest's implicit parser isn't guaranteed
-  // to run ahead of middleware added here via app.use().
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+  // Parse bodies before CSRF so its _csrf fallback is available.
+  app.use(express.json({ limit: '1mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
+  const redisClient = app.get<Redis>(REDIS_CLIENT);
   app.use(
     session({
       store: new RedisStore({ client: redisClient, prefix: 'sess:' }),
-      secret: config.get<string>('SESSION_SECRET') ?? '',
+      secret: config.getOrThrow<string>('SESSION_SECRET'),
       resave: false,
       saveUninitialized: false,
       rolling: true,
       cookie: {
         httpOnly: true,
-        secure: config.get<string>('NODE_ENV') === 'production',
+        secure: production,
         sameSite: 'lax',
         maxAge: 1000 * 60 * 60 * 24 * 30,
       },
@@ -62,10 +112,25 @@ export function configureApp(app: NestExpressApplication): void {
 
   app.use(cookieParser());
   app.use(doubleCsrfProtection);
+  configureBullBoard(app);
 
-  app.useStaticAssets(join(__dirname, '..', 'public'));
-  app.useStaticAssets(join(__dirname, '..', 'node_modules', 'htmx.org', 'dist'), { prefix: '/vendor/htmx' });
-  app.useStaticAssets(join(__dirname, '..', 'node_modules', 'alpinejs', 'dist'), { prefix: '/vendor/alpine' });
+  const staticOptions = { maxAge: production ? '1d' : 0, etag: true };
+  app.useStaticAssets(join(__dirname, '..', 'public'), staticOptions);
+  app.useStaticAssets(join(__dirname, '..', 'node_modules', 'htmx.org', 'dist'), {
+    prefix: '/vendor/htmx',
+    maxAge: production ? '1y' : 0,
+    immutable: production,
+  });
+  app.useStaticAssets(join(__dirname, '..', 'node_modules', 'alpinejs', 'dist'), {
+    prefix: '/vendor/alpine',
+    maxAge: production ? '1y' : 0,
+    immutable: production,
+  });
+  app.useStaticAssets(join(__dirname, '..', 'node_modules', 'sortablejs'), {
+    prefix: '/vendor/sortable',
+    maxAge: production ? '1y' : 0,
+    immutable: production,
+  });
   configureViews(expressApp);
 
   app.useGlobalFilters(new HttpExceptionFilter());

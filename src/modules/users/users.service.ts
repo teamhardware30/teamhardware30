@@ -1,14 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, gt } from 'drizzle-orm';
-import { DRIZZLE, Database } from '../../db/db.provider';
-import { users, NewUser, User } from '../../db/schema';
+import { and, eq, gt, sql } from 'drizzle-orm';
+import { Database } from '../../db/db.provider';
+import { DRIZZLE } from '../../db/db.provider';
+import { NewUser, User } from '../../db/schema';
+import { users } from '../../db/schema';
 
 @Injectable()
 export class UsersService {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
   findByEmail(email: string): Promise<User | undefined> {
-    return this.db.query.users.findFirst({ where: eq(users.email, email) });
+    return this.db.query.users.findFirst({ where: sql`lower(${users.email}) = lower(${email})` });
   }
 
   findById(id: string): Promise<User | undefined> {

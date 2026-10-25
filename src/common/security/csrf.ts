@@ -6,6 +6,7 @@ export const { doubleCsrfProtection, generateToken } = doubleCsrf({
   cookieName: 'csrf-token',
   cookieOptions: {
     secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
   },
   getTokenFromRequest: (req: Request) => (req.headers['x-csrf-token'] as string) || (req.body as Record<string, string> | undefined)?._csrf,
 });

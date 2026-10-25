@@ -1,7 +1,7 @@
+import { join } from 'path';
 import { Express } from 'express';
 import * as nunjucks from 'nunjucks';
 import sanitizeHtml from 'sanitize-html';
-import { join } from 'path';
 
 export function configureViews(app: Express): void {
   const viewsDir = join(__dirname, '..', '..', '..', 'views');
@@ -22,6 +22,11 @@ export function configureViews(app: Express): void {
       },
     }),
   );
+
+  env.addFilter('listText', (value: string[] | string | null | undefined) => {
+    if (Array.isArray(value)) return value.join(', ');
+    return value ?? '';
+  });
 
   env.addFilter('timeAgo', (value: Date | string | null | undefined) => {
     if (!value) {

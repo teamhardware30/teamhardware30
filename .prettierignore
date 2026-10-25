@@ -1,0 +1,6 @@
+node_modules/
+dist/
+coverage/
+public/css/app.css
+pnpm-lock.yaml
+src/db/migrations/meta/

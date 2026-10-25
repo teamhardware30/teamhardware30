@@ -1,21 +1,26 @@
-import { pgTable, uuid, text, timestamp, boolean, unique } from 'drizzle-orm/pg-core';
+import { boolean, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core';
+import { createdAtColumn, idColumn, updatedAtColumn } from './columns';
 import { seekerProfiles } from './profiles.schema';
 
 export const skills = pgTable('skills', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: idColumn(),
   name: text('name').notNull().unique(),
   aliases: text('aliases').array().notNull().default([]),
+  category: text('category'),
   needsReview: boolean('needs_review').notNull().default(false),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdAt: createdAtColumn(),
+  updatedAt: updatedAtColumn(),
 });
 
 export const profileSkills = pgTable(
   'profile_skills',
   {
-    id: uuid('id').primaryKey().defaultRandom(),
+    id: idColumn(),
     profileId: uuid('profile_id').notNull().references(() => seekerProfiles.id, { onDelete: 'cascade' }),
     skillId: uuid('skill_id').notNull().references(() => skills.id, { onDelete: 'cascade' }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    level: text('level'),
+    years: text('years'),
+    createdAt: createdAtColumn(),
   },
   (table) => ({
     profileSkillUnique: unique().on(table.profileId, table.skillId),

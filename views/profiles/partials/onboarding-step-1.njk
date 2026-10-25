@@ -3,13 +3,14 @@
 
 <div>
   <h1 class="text-xl font-semibold text-brand-text">Upload your CV</h1>
-  <p class="mt-1 text-sm text-brand-text/60">PDF, DOCX, or a LinkedIn data export (.zip) — up to 5 MB.</p>
+  <p class="mt-1 text-sm text-brand-text/60">PDF, DOCX, LinkedIn PDF, or a LinkedIn data export ZIP — up to 5 MB.</p>
 
-  {% if fieldErrors.resume %}
-    <div class="mt-4">{{ toast("error", fieldErrors.resume) }}</div>
-  {% endif %}
+  {% if fieldErrors.resume %}<div class="mt-4">{{ toast("error", fieldErrors.resume) }}</div>{% endif %}
 
   <form
+    method="post"
+    action="/onboarding/resume"
+    enctype="multipart/form-data"
     class="mt-6 space-y-4 rounded-lg border border-dashed border-brand-primary/30 bg-white p-8 text-center"
     hx-post="/onboarding/resume"
     hx-target="#onboarding-step"
@@ -17,7 +18,12 @@
     hx-encoding="multipart/form-data"
   >
     <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
-    <input type="file" name="resume" accept=".pdf,.docx,.zip" required class="mx-auto block text-sm" />
+    <label for="resume" class="sr-only">CV or LinkedIn export</label>
+    <input id="resume" type="file" name="resume" accept=".pdf,.docx,.zip" required class="mx-auto block text-sm" />
     {{ button("Upload and continue", { type: "submit" }) }}
+  </form>
+  <form method="post" action="/onboarding/skip" class="mt-4 text-center">
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+    <button type="submit" class="text-sm text-brand-text/60 underline hover:text-brand-primary">Skip upload and enter my profile manually</button>
   </form>
 </div>

@@ -1,42 +1,37 @@
 {% from "components/input.njk" import input %}
 {% from "components/button.njk" import button %}
+{% from "components/checkbox.njk" import checkbox %}
+{% set form = values or profile or {} %}
 
 <div>
-  <h1 class="text-xl font-semibold text-brand-text">Your job preferences</h1>
-  <p class="mt-1 text-sm text-brand-text/60">We'll use this to find and rank matching roles.</p>
+  {% if not embedded %}
+    <h1 class="text-xl font-semibold text-brand-text">Your job preferences</h1>
+    <p class="mt-1 text-sm text-brand-text/60">We'll use this to find and rank matching roles.</p>
+  {% endif %}
 
-  <form
-    class="mt-6 space-y-5"
-    hx-post="/onboarding/preferences"
-    hx-target="#onboarding-step"
-    hx-swap="innerHTML"
-  >
+  <form method="post" action="{{ preferencesAction or '/onboarding/preferences' }}" class="mt-6 space-y-5" hx-post="{{ preferencesAction or '/onboarding/preferences' }}" hx-target="{{ preferencesTarget or '#onboarding-step' }}" hx-swap="innerHTML">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+    {{ input("desiredTitles", { label: "Desired job titles (comma separated)", placeholder: "Software Engineer, Product Manager", value: form.desiredTitles | listText, error: fieldErrors.desiredTitles, required: true }) }}
+    {{ input("locations", { label: "Preferred locations (comma separated)", placeholder: "Nairobi, Remote", value: form.locations | listText, error: fieldErrors.locations }) }}
+    {{ checkbox("remote", "Open to fully remote roles", { checked: form.remote }) }}
 
-    {{ input("desiredTitles", { label: "Desired job titles (comma separated)", placeholder: "Software Engineer, Product Manager" }) }}
-    {{ input("locations", { label: "Preferred locations (comma separated)", placeholder: "Nairobi, Remote" }) }}
-
-    <label class="flex items-center gap-2 text-sm">
-      <input type="checkbox" name="remote" /> Open to fully remote roles
-    </label>
-
-    <div class="grid grid-cols-3 gap-3">
-      {{ input("salaryMin", { label: "Min salary", type: "number" }) }}
-      {{ input("salaryMax", { label: "Max salary", type: "number" }) }}
-      {{ input("salaryCurrency", { label: "Currency", value: "KES" }) }}
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {{ input("salaryMin", { label: "Min salary", type: "number", value: form.salaryMin, error: fieldErrors.salaryMin }) }}
+      {{ input("salaryMax", { label: "Max salary", type: "number", value: form.salaryMax, error: fieldErrors.salaryMax }) }}
+      {{ input("salaryCurrency", { label: "Currency", value: form.salaryCurrency or "KES", error: fieldErrors.salaryCurrency, required: true }) }}
     </div>
 
-    <div>
-      <p class="text-sm font-medium text-brand-text">Job types</p>
+    <fieldset>
+      <legend class="text-sm font-medium text-brand-text">Job types</legend>
       <div class="mt-2 flex flex-wrap gap-4">
         {% for type in jobTypeValues %}
-          <label class="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="jobTypes" value="{{ type }}" /> {{ type | replace("_", " ") }}
-          </label>
+          {{ checkbox("jobTypes", type | replace("_", " "), { id: "job-type-" ~ type, value: type, checked: type in (form.jobTypes or []) }) }}
         {% endfor %}
       </div>
+    </fieldset>
+    <div class="flex items-center justify-end">
+      {% if not embedded %}<a href="/onboarding/steps/3" hx-get="/onboarding/steps/3" hx-target="#onboarding-step" hx-swap="innerHTML" class="mr-auto text-sm text-brand-primary hover:underline">Back to profile</a>{% endif %}
+      {{ button(buttonLabel or "Finish setup", { type: "submit" }) }}
     </div>
-
-    {{ button("Finish setup", { type: "submit" }) }}
   </form>
 </div>

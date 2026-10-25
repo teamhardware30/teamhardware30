@@ -1,16 +1,17 @@
 import { relations } from 'drizzle-orm';
-import { users } from './users.schema';
 import { accounts } from './accounts.schema';
-import { seekerProfiles } from './profiles.schema';
-import { experiences } from './experiences.schema';
-import { educations } from './educations.schema';
-import { skills, profileSkills } from './skills.schema';
-import { resumes } from './resumes.schema';
-import { companies } from './companies.schema';
 import { categories } from './categories.schema';
-import { sources } from './sources.schema';
+import { companies } from './companies.schema';
 import { crawlRuns } from './crawl-runs.schema';
+import { educations } from './educations.schema';
+import { experiences } from './experiences.schema';
 import { jobs } from './jobs.schema';
+import { matches } from './matches.schema';
+import { seekerProfiles } from './profiles.schema';
+import { resumes } from './resumes.schema';
+import { skills, profileSkills } from './skills.schema';
+import { sources } from './sources.schema';
+import { users } from './users.schema';
 
 export const usersRelations = relations(users, ({ many, one }) => ({
   accounts: many(accounts),
@@ -69,8 +70,14 @@ export const crawlRunsRelations = relations(crawlRuns, ({ one }) => ({
   source: one(sources, { fields: [crawlRuns.sourceId], references: [sources.id] }),
 }));
 
-export const jobsRelations = relations(jobs, ({ one }) => ({
+export const jobsRelations = relations(jobs, ({ one, many }) => ({
   source: one(sources, { fields: [jobs.sourceId], references: [sources.id] }),
   companyEntity: one(companies, { fields: [jobs.companyId], references: [companies.id] }),
   category: one(categories, { fields: [jobs.categoryId], references: [categories.id] }),
+  matches: many(matches),
+}));
+
+export const matchesRelations = relations(matches, ({ one }) => ({
+  profile: one(seekerProfiles, { fields: [matches.profileId], references: [seekerProfiles.id] }),
+  job: one(jobs, { fields: [matches.jobId], references: [jobs.id] }),
 }));

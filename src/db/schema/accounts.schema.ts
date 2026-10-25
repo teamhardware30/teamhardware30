@@ -1,4 +1,5 @@
-import { pgTable, uuid, text, timestamp, pgEnum, unique } from 'drizzle-orm/pg-core';
+import { pgEnum, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core';
+import { createdAtColumn, idColumn, updatedAtColumn } from './columns';
 import { users } from './users.schema';
 
 export const oauthProviderEnum = pgEnum('oauth_provider', ['linkedin', 'google']);
@@ -6,11 +7,12 @@ export const oauthProviderEnum = pgEnum('oauth_provider', ['linkedin', 'google']
 export const accounts = pgTable(
   'accounts',
   {
-    id: uuid('id').primaryKey().defaultRandom(),
+    id: idColumn(),
     userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     provider: oauthProviderEnum('provider').notNull(),
     providerAccountId: text('provider_account_id').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
   },
   (table) => ({
     providerAccountUnique: unique().on(table.provider, table.providerAccountId),

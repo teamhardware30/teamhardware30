@@ -1,0 +1,93 @@
+[
+  { "slug": "engineering", "name": "Engineering", "parent": null },
+  { "slug": "engineering-backend", "name": "Backend", "parent": "engineering" },
+  { "slug": "engineering-frontend", "name": "Frontend", "parent": "engineering" },
+  { "slug": "engineering-full-stack", "name": "Full Stack", "parent": "engineering" },
+  { "slug": "engineering-mobile", "name": "Mobile", "parent": "engineering" },
+  { "slug": "engineering-devops", "name": "DevOps & Platform", "parent": "engineering" },
+  { "slug": "engineering-qa", "name": "Quality Assurance", "parent": "engineering" },
+  { "slug": "engineering-security", "name": "Security", "parent": "engineering" },
+
+  { "slug": "data", "name": "Data", "parent": null },
+  { "slug": "data-analytics", "name": "Data Analytics", "parent": "data" },
+  { "slug": "data-engineering", "name": "Data Engineering", "parent": "data" },
+  { "slug": "data-science", "name": "Data Science", "parent": "data" },
+  { "slug": "data-machine-learning", "name": "Machine Learning", "parent": "data" },
+  { "slug": "data-business-intelligence", "name": "Business Intelligence", "parent": "data" },
+
+  { "slug": "product", "name": "Product", "parent": null },
+  { "slug": "product-management", "name": "Product Management", "parent": "product" },
+  { "slug": "product-design", "name": "Product Design", "parent": "product" },
+  { "slug": "product-ownership", "name": "Product Ownership", "parent": "product" },
+  { "slug": "product-research", "name": "User Research", "parent": "product" },
+
+  { "slug": "design", "name": "Design", "parent": null },
+  { "slug": "design-ux", "name": "UX Design", "parent": "design" },
+  { "slug": "design-ui", "name": "UI Design", "parent": "design" },
+  { "slug": "design-graphic", "name": "Graphic Design", "parent": "design" },
+  { "slug": "design-motion", "name": "Motion Design", "parent": "design" },
+
+  { "slug": "marketing", "name": "Marketing", "parent": null },
+  { "slug": "marketing-digital", "name": "Digital Marketing", "parent": "marketing" },
+  { "slug": "marketing-content", "name": "Content Marketing", "parent": "marketing" },
+  { "slug": "marketing-growth", "name": "Growth Marketing", "parent": "marketing" },
+  { "slug": "marketing-brand", "name": "Brand Marketing", "parent": "marketing" },
+  { "slug": "marketing-seo", "name": "SEO", "parent": "marketing" },
+
+  { "slug": "sales", "name": "Sales", "parent": null },
+  { "slug": "sales-business-development", "name": "Business Development", "parent": "sales" },
+  { "slug": "sales-account-executive", "name": "Account Executive", "parent": "sales" },
+  { "slug": "sales-account-management", "name": "Account Management", "parent": "sales" },
+  { "slug": "sales-partnerships", "name": "Partnerships", "parent": "sales" },
+
+  { "slug": "finance", "name": "Finance", "parent": null },
+  { "slug": "finance-accounting", "name": "Accounting", "parent": "finance" },
+  { "slug": "finance-financial-analysis", "name": "Financial Analysis", "parent": "finance" },
+  { "slug": "finance-audit", "name": "Audit", "parent": "finance" },
+  { "slug": "finance-treasury", "name": "Treasury", "parent": "finance" },
+  { "slug": "finance-payroll", "name": "Payroll", "parent": "finance" },
+
+  { "slug": "operations", "name": "Operations", "parent": null },
+  { "slug": "operations-supply-chain", "name": "Supply Chain", "parent": "operations" },
+  { "slug": "operations-logistics", "name": "Logistics", "parent": "operations" },
+  { "slug": "operations-project-management", "name": "Project Management", "parent": "operations" },
+  { "slug": "operations-business-operations", "name": "Business Operations", "parent": "operations" },
+  { "slug": "operations-customer-operations", "name": "Customer Operations", "parent": "operations" },
+
+  { "slug": "customer-success", "name": "Customer Success", "parent": null },
+  { "slug": "customer-success-management", "name": "Customer Success Management", "parent": "customer-success" },
+  { "slug": "customer-success-support", "name": "Customer Support", "parent": "customer-success" },
+  { "slug": "customer-success-onboarding", "name": "Customer Onboarding", "parent": "customer-success" },
+
+  { "slug": "people", "name": "People & HR", "parent": null },
+  { "slug": "people-recruiting", "name": "Recruiting", "parent": "people" },
+  { "slug": "people-hr-business-partner", "name": "HR Business Partner", "parent": "people" },
+  { "slug": "people-learning", "name": "Learning & Development", "parent": "people" },
+  { "slug": "people-compensation", "name": "Compensation & Benefits", "parent": "people" },
+
+  { "slug": "legal", "name": "Legal", "parent": null },
+  { "slug": "legal-counsel", "name": "Legal Counsel", "parent": "legal" },
+  { "slug": "legal-compliance", "name": "Compliance", "parent": "legal" },
+  { "slug": "legal-contracts", "name": "Contracts", "parent": "legal" },
+
+  { "slug": "healthcare", "name": "Healthcare", "parent": null },
+  { "slug": "healthcare-nursing", "name": "Nursing", "parent": "healthcare" },
+  { "slug": "healthcare-clinical", "name": "Clinical Operations", "parent": "healthcare" },
+  { "slug": "healthcare-public-health", "name": "Public Health", "parent": "healthcare" },
+  { "slug": "healthcare-health-it", "name": "Health IT", "parent": "healthcare" },
+
+  { "slug": "education", "name": "Education", "parent": null },
+  { "slug": "education-teaching", "name": "Teaching", "parent": "education" },
+  { "slug": "education-curriculum", "name": "Curriculum", "parent": "education" },
+  { "slug": "education-edtech", "name": "EdTech", "parent": "education" },
+  { "slug": "education-administration", "name": "Education Administration", "parent": "education" },
+
+  { "slug": "ngo-development", "name": "NGO & Development", "parent": null },
+  { "slug": "ngo-programs", "name": "Programs", "parent": "ngo-development" },
+  { "slug": "ngo-monitoring-evaluation", "name": "Monitoring & Evaluation", "parent": "ngo-development" },
+  { "slug": "ngo-fundraising", "name": "Fundraising", "parent": "ngo-development" },
+  { "slug": "ngo-advocacy", "name": "Advocacy", "parent": "ngo-development" },
+
+  { "slug": "other", "name": "Other", "parent": null },
+  { "slug": "other-general", "name": "General", "parent": "other" }
+]

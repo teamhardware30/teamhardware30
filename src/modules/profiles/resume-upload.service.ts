@@ -1,7 +1,8 @@
 import { randomUUID } from 'crypto';
+import { S3Client} from '@aws-sdk/client-s3';
+import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { fromBuffer as fileTypeFromBuffer } from 'file-type';
 import { S3_CLIENT } from './s3-client.provider';
 
@@ -25,9 +26,9 @@ export class ResumeUploadService {
 
   constructor(
     @Inject(S3_CLIENT) private readonly s3: S3Client,
-    config: ConfigService,
+    @Inject(ConfigService) private readonly config: ConfigService,
   ) {
-    this.bucket = config.get<string>('S3_BUCKET') ?? 'job-copilot-uploads';
+    this.bucket = this.config.get<string>('S3_BUCKET') ?? 'job-copilot-uploads';
   }
 
   async upload(file: Express.Multer.File, userId: string): Promise<UploadedResume> {
@@ -56,12 +57,33 @@ export class ResumeUploadService {
     return { s3Key: key, mimeType, sizeBytes: file.size };
   }
 
+  async delete(s3Key: string): Promise<void> {
+    await this.s3.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: s3Key }));
+  }
+
+  async uploadBuffer(buffer: Buffer, userId: string, mimeType: string, fileName: string): Promise<UploadedResume> {
+    if (buffer.length > MAX_RESUME_SIZE_BYTES) throw new BadRequestException('File must be 5 MB or smaller');
+    const extension = fileName.split('.').pop() || 'pdf';
+    const key = `resumes/${userId}/${randomUUID()}.${extension}`;
+    await this.s3.send(new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: buffer, ContentType: mimeType }));
+    return { s3Key: key, mimeType, sizeBytes: buffer.length };
+  }
+
   async download(s3Key: string): Promise<Buffer> {
     const response = await this.s3.send(new GetObjectCommand({ Bucket: this.bucket, Key: s3Key }));
-    const chunks: Buffer[] = [];
-    for await (const chunk of response.Body as AsyncIterable<Buffer>) {
-      chunks.push(chunk);
+    if (!response.Body) {
+      throw new Error('Stored resume has no readable content');
     }
-    return Buffer.concat(chunks);
+    const chunks: Buffer[] = [];
+    let size = 0;
+    for await (const chunk of response.Body as AsyncIterable<Buffer | Uint8Array | string>) {
+      const data = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      size += data.length;
+      if (size > MAX_RESUME_SIZE_BYTES) {
+        throw new Error('Stored resume exceeds the 5 MB processing limit');
+      }
+      chunks.push(data);
+    }
+    return Buffer.concat(chunks, size);
   }
 }

@@ -1,0 +1,19 @@
+{% macro textarea(name, opts={}) %}
+  {% set id = opts.id or name %}
+  <div class="flex flex-col gap-1">
+    {% if opts.label %}<label for="{{ id }}" class="text-sm font-medium text-brand-text">{{ opts.label }}</label>{% endif %}
+    <textarea
+      id="{{ id }}"
+      name="{{ name }}"
+      rows="{{ opts.rows or 4 }}"
+      placeholder="{{ opts.placeholder or '' }}"
+      {% if opts.required %}required aria-required="true"{% endif %}
+      {% if opts.disabled %}disabled{% endif %}
+      {% if opts.error %}aria-invalid="true" aria-describedby="{{ id }}-error"{% elif opts.hint %}aria-describedby="{{ id }}-hint"{% endif %}
+      {% if opts.attrs %}{{ opts.attrs | safe }}{% endif %}
+      class="rounded-md border border-brand-text/20 bg-white px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-60 {{ 'border-red-500' if opts.error }}"
+    >{{ opts.value if opts.value is defined else '' }}</textarea>
+    {% if opts.hint %}<p id="{{ id }}-hint" class="text-xs text-brand-text/60">{{ opts.hint }}</p>{% endif %}
+    {% if opts.error %}<p id="{{ id }}-error" class="text-xs text-red-600">{{ opts.error }}</p>{% endif %}
+  </div>
+{% endmacro %}

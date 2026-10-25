@@ -1,17 +1,18 @@
 {% macro select(name, options, opts={}) %}
+  {% set id = opts.id or name %}
   <div class="flex flex-col gap-1">
-    {% if opts.label %}
-      <label for="{{ name }}" class="text-sm font-medium text-brand-text">{{ opts.label }}</label>
-    {% endif %}
+    {% if opts.label %}<label for="{{ id }}" class="text-sm font-medium text-brand-text">{{ opts.label }}</label>{% endif %}
     <select
-      id="{{ name }}"
+      id="{{ id }}"
       name="{{ name }}"
+      {% if opts.required %}required aria-required="true"{% endif %}
+      {% if opts.disabled %}disabled{% endif %}
+      {% if opts.error %}aria-invalid="true" aria-describedby="{{ id }}-error"{% endif %}
       {% if opts.attrs %}{{ opts.attrs | safe }}{% endif %}
-      class="rounded-md border border-brand-text/20 bg-white px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+      class="rounded-md border border-brand-text/20 bg-white px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-60 {{ 'border-red-500' if opts.error }}"
     >
-      {% for option in options %}
-        <option value="{{ option.value }}" {% if option.value == opts.selected %}selected{% endif %}>{{ option.label }}</option>
-      {% endfor %}
+      {% for option in options %}<option value="{{ option.value }}" {% if option.value == opts.selected %}selected{% endif %}>{{ option.label }}</option>{% endfor %}
     </select>
+    {% if opts.error %}<p id="{{ id }}-error" class="text-xs text-red-600">{{ opts.error }}</p>{% endif %}
   </div>
 {% endmacro %}

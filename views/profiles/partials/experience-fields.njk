@@ -1,0 +1,12 @@
+{% from "components/input.njk" import input %}
+{% from "components/textarea.njk" import textarea %}
+{% from "components/checkbox.njk" import checkbox %}
+{% macro experience_fields(values, fieldErrors, prefix='') %}
+  {{ input("title", { id: prefix ~ "title", label: "Job title", value: values.title, error: fieldErrors.title, required: true }) }}
+  {{ input("company", { id: prefix ~ "company", label: "Company", value: values.company, error: fieldErrors.company, required: true }) }}
+  {{ input("location", { id: prefix ~ "location", label: "Location", value: values.location, error: fieldErrors.location }) }}
+  {{ checkbox("current", "I currently work here", { id: prefix ~ "current", checked: values.current }) }}
+  {{ input("startDate", { id: prefix ~ "startDate", label: "Start date", placeholder: "YYYY-MM", value: values.startDate, error: fieldErrors.startDate }) }}
+  {{ input("endDate", { id: prefix ~ "endDate", label: "End date", placeholder: "YYYY-MM", value: values.endDate, error: fieldErrors.endDate }) }}
+  <div class="sm:col-span-2">{{ textarea("description", { id: prefix ~ "description", label: "Achievements and responsibilities (one bullet per line)", value: values.description, error: fieldErrors.description, rows: 4 }) }}</div>
+{% endmacro %}

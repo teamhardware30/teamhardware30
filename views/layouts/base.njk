@@ -5,44 +5,80 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}Job Copilot{% endblock %}</title>
+  <meta name="description" content="{% block description %}Find relevant jobs, understand your fit, and improve your CV with Job Copilot.{% endblock %}" />
   {% block head %}{% endblock %}
   <link rel="icon" type="image/png" href="/images/logo.png" />
   <link rel="stylesheet" href="/css/app.css" />
-  <script src="/vendor/htmx/htmx.min.js" defer></script>
-  <script src="/vendor/alpine/cdn.min.js" defer></script>
-  <script src="/js/app.js" defer></script>
+  <script src="/vendor/htmx/htmx.min.js" nonce="{{ cspNonce }}" defer></script>
+  <script src="/vendor/alpine/cdn.min.js" nonce="{{ cspNonce }}" defer></script>
+  <script src="/js/app.js" nonce="{{ cspNonce }}" defer></script>
 </head>
 <body
   class="min-h-screen bg-brand-bg text-brand-text antialiased"
   hx-headers='{"x-csrf-token": "{{ csrfToken }}"}'
 >
-  <header class="border-b border-brand-primary/10 bg-white">
-    <nav class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-      <a href="/" class="flex items-center">
-        <img src="/images/logo.png" alt="PortHub" class="h-8 w-auto" />
+  <a href="#main-content" class="sr-only z-50 rounded-md bg-white px-4 py-2 text-brand-primary focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Skip to content</a>
+  <header class="border-b border-brand-primary/10 bg-white" x-data="{ mobileOpen: false }">
+    <nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3" aria-label="Main navigation">
+      <a href="/" class="flex items-center rounded-sm" aria-label="Job Copilot home">
+        <img src="/images/logo.png" alt="Job Copilot" class="h-8 w-auto" />
       </a>
-      <div class="flex items-center gap-4 text-sm">
-        <a href="/jobs" class="hover:text-brand-primary">Jobs</a>
+      <button
+        type="button"
+        class="rounded-md p-2 text-brand-text hover:bg-brand-primary/10 md:hidden"
+        aria-label="Toggle navigation menu"
+        x-bind:aria-expanded="mobileOpen.toString()"
+        aria-controls="mobile-navigation"
+        @click="mobileOpen = !mobileOpen"
+      >
+        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
+      </button>
+      <div class="hidden items-center gap-5 text-sm md:flex">
+        <a href="/jobs" class="rounded-sm hover:text-brand-primary {{ 'font-semibold text-brand-primary' if currentPath == '/jobs' else '' }}">Jobs</a>
         {% if user %}
+          <a href="/matches" class="rounded-sm hover:text-brand-primary {{ 'font-semibold text-brand-primary' if currentPath == '/matches' else '' }}">Matches</a>
+          <a href="/applications" class="rounded-sm hover:text-brand-primary {{ 'font-semibold text-brand-primary' if currentPath == '/applications' else '' }}">Applications</a>
           {% if user.role == 'admin' %}
-            <a href="/admin/sources" class="hover:text-brand-primary">Admin</a>
+            <a href="/admin/sources" class="rounded-sm hover:text-brand-primary">Admin</a>
+            <a href="/admin/enrichment" class="rounded-sm hover:text-brand-primary">Enrichment</a>
+            <a href="/admin/queues" class="rounded-sm hover:text-brand-primary">Queues</a>
           {% endif %}
-          <a href="/profile" class="hover:text-brand-primary">Profile</a>
-          <form method="post" action="/logout">
-            <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
-            <button type="submit" class="text-brand-text/70 hover:text-brand-primary">Sign out</button>
-          </form>
+          <div class="relative" x-data="{ open: false }">
+            <button type="button" class="flex items-center gap-2 rounded-full p-1 hover:bg-brand-primary/10" @click="open = !open" @keydown.escape="open = false" x-bind:aria-expanded="open.toString()" aria-label="Account menu">
+              {% if user.avatarUrl %}<img src="{{ user.avatarUrl }}" alt="" class="h-8 w-8 rounded-full" />{% else %}<span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-primary/10 font-semibold text-brand-primary">{{ (user.name or user.email or 'U') | first | upper }}</span>{% endif %}
+            </button>
+            <div x-show="open" x-cloak @click.outside="open = false" class="absolute right-0 z-20 mt-2 w-48 rounded-md border border-brand-primary/10 bg-white py-2 shadow-lg">
+              <a href="/profile" class="block px-4 py-2 hover:bg-brand-primary/10">Profile</a>
+              <form method="post" action="/logout">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+                <button type="submit" class="w-full px-4 py-2 text-left hover:bg-brand-primary/10">Sign out</button>
+              </form>
+            </div>
+          </div>
         {% else %}
-          <a href="/login" class="hover:text-brand-primary">Sign in</a>
+          <a href="/login" class="rounded-sm hover:text-brand-primary">Sign in</a>
           <a href="/register" class="rounded-md bg-brand-primary px-3 py-1.5 text-white hover:bg-brand-primary/90">Get started</a>
         {% endif %}
       </div>
     </nav>
+    <div id="mobile-navigation" x-show="mobileOpen" x-cloak class="space-y-1 border-t border-brand-primary/10 px-4 py-3 text-sm md:hidden">
+      <a href="/jobs" class="block rounded-md px-3 py-2 hover:bg-brand-primary/10">Jobs</a>
+      {% if user %}
+        <a href="/matches" class="block rounded-md px-3 py-2 hover:bg-brand-primary/10">Matches</a>
+        <a href="/applications" class="block rounded-md px-3 py-2 hover:bg-brand-primary/10">Applications</a>
+        <a href="/profile" class="block rounded-md px-3 py-2 hover:bg-brand-primary/10">Profile</a>
+        {% if user.role == 'admin' %}<a href="/admin/sources" class="block rounded-md px-3 py-2 hover:bg-brand-primary/10">Admin</a><a href="/admin/enrichment" class="block rounded-md px-3 py-2 hover:bg-brand-primary/10">Enrichment</a><a href="/admin/queues" class="block rounded-md px-3 py-2 hover:bg-brand-primary/10">Queues</a>{% endif %}
+        <form method="post" action="/logout"><input type="hidden" name="_csrf" value="{{ csrfToken }}" /><button type="submit" class="w-full rounded-md px-3 py-2 text-left hover:bg-brand-primary/10">Sign out</button></form>
+      {% else %}
+        <a href="/login" class="block rounded-md px-3 py-2 hover:bg-brand-primary/10">Sign in</a>
+        <a href="/register" class="block rounded-md px-3 py-2 hover:bg-brand-primary/10">Get started</a>
+      {% endif %}
+    </div>
   </header>
 
-  <main class="mx-auto max-w-5xl px-4 py-8">
+  <main id="main-content" class="mx-auto max-w-6xl px-4 py-8" tabindex="-1">
     {% if flash and flash.length %}
-      <div class="mb-6 space-y-2">
+      <div class="mb-6 space-y-2" aria-live="polite" aria-atomic="false">
         {% for message in flash %}
           {{ toast(message.type, message.message) }}
         {% endfor %}
@@ -51,5 +87,11 @@
 
     {% block content %}{% endblock %}
   </main>
+  <footer class="border-t border-brand-primary/10 bg-white">
+    <div class="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-6 text-sm text-brand-text/70 sm:flex-row sm:items-center sm:justify-between">
+      <span>&copy; 2026 Job Copilot</span>
+      <span>Privacy and terms placeholders</span>
+    </div>
+  </footer>
 </body>
 </html>

@@ -1,51 +1,61 @@
+import { createHash } from 'crypto';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { AiService } from '../ai/ai.service';
+import { EMBED_PROFILE_QUEUE } from './profiles.constants';
 import { ProfilesService } from './profiles.service';
 
-export const EMBED_PROFILE_QUEUE = 'embed-profile';
 
-export interface EmbedProfileJobData {
-  profileId: string;
+export { EMBED_PROFILE_QUEUE };
+
+export interface ProfileEmbeddingSource {
+  headline: string | null;
+  desiredTitles: string[];
+  embedding: number[] | null;
+  embeddingTextHash: string | null;
+  embeddingModel: string | null;
+  experiences: Array<{ title: string; company: string; description: string | null }>;
+  profileSkills: Array<{ skill: { name: string } }>;
 }
 
-@Processor(EMBED_PROFILE_QUEUE)
+export function buildProfileEmbeddingText(profile: ProfileEmbeddingSource): string {
+  const roles = (profile.experiences ?? [])
+    .slice(0, 3)
+    .map((experience) => `Role: ${experience.title} at ${experience.company}.${experience.description ? ` ${experience.description}` : ''}`);
+  return [
+    `Headline: ${profile.headline ?? ''}`,
+    `Desired titles: ${(profile.desiredTitles ?? []).join(', ')}`,
+    `Top skills: ${(profile.profileSkills ?? []).map((item) => item.skill.name).join(', ')}`,
+    ...roles,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+export function hashProfileEmbeddingText(text: string): string {
+  return createHash('sha256').update(text).digest('hex');
+}
+
+@Processor(EMBED_PROFILE_QUEUE, { concurrency: 1 })
 export class EmbedProfileProcessor extends WorkerHost {
   private readonly logger = new Logger(EmbedProfileProcessor.name);
 
-  constructor(
-    private readonly aiService: AiService,
-    private readonly profilesService: ProfilesService,
-  ) {
+  constructor(private readonly aiService: AiService, private readonly profilesService: ProfilesService) {
     super();
   }
 
-  async process(job: Job<EmbedProfileJobData>): Promise<void> {
-    const full = await this.profilesService.findFullProfile(job.data.profileId);
-    if (!full) {
+  async process(job: Job<{ profileId: string }>): Promise<void> {
+    const profile = await this.profilesService.findFullProfileById(job.data.profileId);
+    if (!profile) throw new Error('Profile not found');
+
+    const text = buildProfileEmbeddingText(profile as ProfileEmbeddingSource);
+    const hash = hashProfileEmbeddingText(text);
+    if (profile.embedding && profile.embeddingTextHash === hash && profile.embeddingModel === this.aiService.embeddingModel) {
       return;
     }
 
-    const parts = [
-      full.headline,
-      full.summary,
-      ...full.experiences.map((exp) => `${exp.title} at ${exp.company}. ${exp.description ?? ''}`),
-      ...full.educations.map((edu) => `${edu.degree ?? ''} ${edu.fieldOfStudy ?? ''} at ${edu.school}`),
-      full.profileSkills.map((ps) => ps.skill.name).join(', '),
-    ].filter((part): part is string => Boolean(part && part.trim()));
-
-    if (parts.length === 0) {
-      return;
-    }
-
-    try {
-      const [embedding] = await this.aiService.embed([parts.join('\n')]);
-      if (embedding?.length) {
-        await this.profilesService.updateProfile(job.data.profileId, { embedding });
-      }
-    } catch (error) {
-      this.logger.warn(`Failed to embed profile ${job.data.profileId}: ${String(error)}`);
-    }
+    const [vector] = await this.aiService.embed([text]);
+    await this.profilesService.saveProfileEmbedding(profile.id ?? job.data.profileId, vector, hash, this.aiService.embeddingModel);
   }
 }

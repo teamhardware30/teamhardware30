@@ -1,0 +1,22 @@
+{% from "components/score_ring.njk" import score_ring %}
+<div class="space-y-4">
+  <div class="flex items-center gap-4">
+    {{ score_ring(match.score) }}
+    <div>
+      <h2 class="text-xl font-semibold">{{ match.job.title }}</h2>
+      <p class="text-sm text-brand-text/60">{{ match.job.company }}</p>
+    </div>
+  </div>
+  <section>
+    <h3 class="text-sm font-semibold uppercase tracking-wide text-brand-text/60">Breakdown</h3>
+    <ul class="mt-2 space-y-2 text-sm">
+      {% for key, value in match.breakdown %}
+        <li class="flex items-center justify-between"><span>{{ key }}</span><span>{{ (value * 100) | round }}%</span></li>
+      {% endfor %}
+    </ul>
+  </section>
+  <section id="match-explanation-{{ match.id }}" hx-get="/matches/{{ match.id }}/explanation" hx-trigger="revealed" hx-swap="innerHTML">
+    <p class="text-sm text-brand-text/60">Loading explanation…</p>
+  </section>
+  <a href="/jobs/{{ match.job.id }}" class="text-sm text-brand-primary hover:underline">Open full job page</a>
+</div>

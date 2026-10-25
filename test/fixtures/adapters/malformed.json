@@ -1,0 +1,9 @@
+{
+  "greenhouse": { "id": 1, "title": "", "absolute_url": "https://boards.greenhouse.io/acme/jobs/1", "content": "<p>Missing title</p>" },
+  "lever": { "id": "1", "text": "", "hostedUrl": "https://jobs.lever.co/acme/1", "description": "<p>Missing title</p>" },
+  "ashby": { "id": "1", "jobUrl": "https://jobs.ashbyhq.com/acme/1", "descriptionHtml": "<p>Missing title</p>" },
+  "remotive": { "id": 1, "url": "https://remotive.com/jobs/1", "title": "Missing company", "description": "<p>Invalid</p>" },
+  "arbeitnow": { "slug": "1", "url": "https://www.arbeitnow.com/jobs/1", "title": "Missing company", "description": "<p>Invalid</p>" },
+  "jsonld": { "@type": "JobPosting", "url": "https://jobs.example.com/jobs/1", "title": "Missing company", "description": "<p>Invalid</p>" },
+  "html": { "url": "https://example.com/careers/1", "title": "", "company": "HelpCo", "description": "Missing title" }
+}
