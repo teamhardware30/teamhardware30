@@ -42,7 +42,7 @@
     "@bull-board/api": "^9.10.5",
     "@bull-board/express": "^9.10.5",
     "@napi-rs/canvas": "^1.0.13",
-    "@nestjs/bullmq": "^10.2.3",
+    "@nestjs/bullmq": "^12.0.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^3.3.0",
     "@nestjs/core": "^11.0.0",
