@@ -1,7 +1,8 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { ArgumentsHost, ExceptionFilter} from '@nestjs/common';
+import { Catch, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { ZodValidationException } from '../pipes/zod-validation.pipe';
 import { RedirectException } from '../exceptions/redirect.exception';
+import { ZodValidationException } from '../pipes/zod-validation.pipe';
 
 /**
  * Catches everything, not just HttpException: csrf-csrf's invalid-token
@@ -39,6 +40,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     if (req.path.startsWith('/api/')) {
       res.status(status).json(exception instanceof HttpException ? exception.getResponse() : { statusCode: status, message });
+      return;
+    }
+
+    if (status === HttpStatus.FORBIDDEN) {
+      res.status(status).render('errors/403');
       return;
     }
 

@@ -1,0 +1,7 @@
+{% macro radio(name, value, label, opts={}) %}
+  {% set id = opts.id or (name + '-' + value) %}
+  <div class="flex items-start gap-2">
+    <input id="{{ id }}" name="{{ name }}" type="radio" value="{{ value }}" {% if opts.checked %}checked{% endif %} {% if opts.disabled %}disabled{% endif %} class="mt-0.5 border-brand-text/30 text-brand-primary focus:ring-brand-primary" />
+    <label for="{{ id }}" class="text-sm text-brand-text">{{ label }}</label>
+  </div>
+{% endmacro %}

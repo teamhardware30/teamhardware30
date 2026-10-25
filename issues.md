@@ -55,7 +55,9 @@ Environment: Node `24.19.0`, pnpm `9.14.2`, Podman Testcontainers. The project t
 - `pnpm test:e2e` — **3 files, 17 tests passed** on retry. The first attempt timed out during Testcontainers setup; after the Ryuk image was available, the normal command passed.
 - Checked-in migrations against an empty `pgvector/pgvector:pg16` container — both migrations applied; **17 tables**, `vector` and `pg_trgm`, and the expected job indexes were present.
 - `pnpm db:seed:sources` twice against that migrated database — first run created 8 rows, second updated those rows, and the final count remained **8**.
-- `pnpm lint` remains unusable: ESLint configuration/dependency is absent and the script still uses `--fix`.
+- `pnpm lint` now passes using the project's ESLint flat configuration.
+- `docker compose config` passes for the new Compose file.
+- `pnpm build`, `pnpm typecheck`, `pnpm test:unit`, and `pnpm test:e2e` all pass after the implementation work.
 
 Passing the existing suite does not prove requirements for which no tests exist. The e2e harness still uses `drizzle-kit push --force`; the separate migration smoke check above does not replace migrating in the harness.
 

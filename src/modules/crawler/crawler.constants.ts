@@ -13,4 +13,8 @@ export const DEACTIVATE_STALE_JOB = 'deactivate-stale-jobs';
 export const UPSERT_BATCH_SIZE = 100;
 
 /** Jobs not seen for this many days are deactivated by the nightly job. */
-export const STALE_AFTER_DAYS = 7;
+export const STALE_AFTER_DAYS = 45;
+
+/** Apply links are checked at most this often, in small nightly batches. */
+export const LINK_CHECK_INTERVAL_DAYS = 7;
+export const LINK_CHECK_BATCH_SIZE = 100;

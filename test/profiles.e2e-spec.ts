@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
-import { createTestApp, closeTestApp, tokenFromVerifyUrl, TestContext } from './setup-e2e';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { TestContext } from './setup-e2e';
+import { createTestApp, closeTestApp, tokenFromVerifyUrl } from './setup-e2e';
 
 function extractCsrf(html: string): string {
   const match = html.match(/name="_csrf" value="([^"]+)"/);

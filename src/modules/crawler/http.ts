@@ -1,19 +1,30 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Bottleneck from 'bottleneck';
+import { eq } from 'drizzle-orm';
+import type Redis from 'ioredis';
 import robotsParser from 'robots-parser';
 import { Agent } from 'undici';
-import Redis from 'ioredis';
+import { Database } from '../../db/db.provider';
+import { DRIZZLE } from '../../db/db.provider';
+import { sources } from '../../db/schema';
+import {
+  AdapterHttpError,
+  AdapterNetworkError,
+  ResponseTooLargeError,
+  RobotsBlockedError,
+  SourceKillSwitchError,
+} from './adapters/errors';
 import { CRAWLER_REDIS } from './crawler.constants';
 
 export interface CrawlRequestOptions {
-  /** Prior ETag for a conditional request. */
   etag?: string;
-  /** Prior Last-Modified value for a conditional request. */
   lastModified?: string;
   accept?: string;
-  /** Override the client-wide robots setting for this URL. */
   respectRobots?: boolean;
+  /** Enables the database-backed kill switch and source-specific limiter. */
+  sourceId?: string;
+  requestsPerSecond?: number;
 }
 
 export interface CrawlResponse {
@@ -25,34 +36,56 @@ export interface CrawlResponse {
   lastModified?: string;
 }
 
-interface CrawlerHttpOptions {
+export interface CrawlerHttpOptions {
   userAgent?: string;
   requestsPerSecond?: number;
   respectRobots?: boolean;
   timeoutMs?: number;
   maxAttempts?: number;
+  maxResponseBytes?: number;
+  retryBaseMs?: number;
+  sleep?: (ms: number) => Promise<void>;
+  random?: () => number;
+}
+
+interface ConditionalCacheEntry {
+  etag?: string;
+  lastModified?: string;
+  body?: string;
 }
 
 const ROBOTS_CACHE_SECONDS = 24 * 60 * 60;
 const CONDITIONAL_CACHE_SECONDS = 7 * 24 * 60 * 60;
-const BACKOFF_MS = [1_000, 3_000, 8_000];
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 function originOf(url: string): string {
+  return new URL(url).origin;
+}
+
+function assertHttpUrl(url: string): void {
   const parsed = new URL(url);
-  return parsed.origin;
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new AdapterNetworkError(url);
+  }
+}
+
+/** Parse both delta-seconds and HTTP-date Retry-After values. */
+export function retryAfterMs(value: string | null, now = Date.now()): number | null {
+  if (!value) return null;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds)) {
+    return seconds >= 0 ? Math.round(seconds * 1000) : null;
+  }
+  const date = Date.parse(value);
+  return Number.isNaN(date) ? null : Math.max(0, date - now);
 }
 
 /**
- * Polite HTTP client shared by every source adapter.
- *
- * - one Bottleneck queue per origin (1 req/s by default)
- * - robots.txt respected and cached in Redis for 24h
- * - conditional requests via ETag / If-Modified-Since
- * - exponential backoff retries for 429/5xx/network failures
+ * Polite HTTP client shared by every source adapter. Each actual request (including
+ * retries, robots and redirects) passes through source kill-switch, robots and
+ * per-origin/source limiters.
  */
 @Injectable()
 export class CrawlerHttp {
@@ -64,52 +97,50 @@ export class CrawlerHttp {
   private readonly respectRobots: boolean;
   private readonly timeoutMs: number;
   private readonly maxAttempts: number;
+  private readonly maxResponseBytes: number;
+  private readonly retryBaseMs: number;
+  private readonly sleep: (ms: number) => Promise<void>;
+  private readonly random: () => number;
 
   constructor(
     config: ConfigService,
     @Inject(CRAWLER_REDIS) private readonly redis: Redis,
     @Optional() options: CrawlerHttpOptions = {},
+    @Optional() @Inject(DRIZZLE) private readonly db?: Database,
   ) {
     const contactEmail = config.get<string>('CRAWLER_CONTACT_EMAIL') ?? 'crawler@job-copilot.local';
-    this.userAgent = options.userAgent ?? config.get<string>('CRAWLER_USER_AGENT') ?? `JobCopilotBot/0.1 (+${contactEmail})`;
+    this.userAgent =
+      options.userAgent ?? config.get<string>('CRAWLER_USER_AGENT') ?? `JobCopilotBot/0.1 (+${contactEmail})`;
     this.requestsPerSecond = options.requestsPerSecond ?? config.get<number>('CRAWLER_REQUESTS_PER_SECOND') ?? 1;
     this.respectRobots = options.respectRobots ?? config.get<boolean>('CRAWLER_RESPECT_ROBOTS') ?? true;
-    this.timeoutMs = options.timeoutMs ?? config.get<number>('CRAWLER_TIMEOUT_MS') ?? 20_000;
-    this.maxAttempts = options.maxAttempts ?? 3;
+    this.timeoutMs = options.timeoutMs ?? config.get<number>('CRAWLER_TIMEOUT_MS') ?? 30_000;
+    this.maxAttempts = Math.max(1, options.maxAttempts ?? 3);
+    this.maxResponseBytes =
+      options.maxResponseBytes ?? config.get<number>('CRAWLER_MAX_RESPONSE_BYTES') ?? 5 * 1024 * 1024;
+    this.retryBaseMs = Math.max(1, options.retryBaseMs ?? 1_000);
+    this.sleep = options.sleep ?? defaultSleep;
+    this.random = options.random ?? Math.random;
   }
 
-  /**
-   * Fetch a URL. Returns `null` when robots.txt disallows it (the skip is
-   * logged), and `notModified: true` for a 304 response.
-   */
+  /** Returns null for a robots-disallowed initial URL; a 304 includes the cached body. */
   async get(url: string, options: CrawlRequestOptions = {}): Promise<CrawlResponse | null> {
-    if (options.respectRobots !== false && this.respectRobots) {
-      const allowed = await this.isAllowed(url);
-      if (!allowed) {
-        this.logger.warn(`Skipping ${url}: disallowed by robots.txt`);
-        return null;
-      }
+    assertHttpUrl(url);
+    await this.assertSourceAllowed(options.sourceId, url);
+    if (!(await this.checkRobots(url, options))) {
+      this.logger.warn(`Skipping ${url}: disallowed by robots.txt`);
+      return null;
     }
 
     const cached = await this.readConditional(url);
     const etag = options.etag ?? cached?.etag;
     const lastModified = options.lastModified ?? cached?.lastModified;
+    const headers = this.headers(options, etag, lastModified);
 
-    const headers: Record<string, string> = {
-      'user-agent': this.userAgent,
-      accept: options.accept ?? 'text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.5',
-    };
-    if (etag) headers['if-none-match'] = etag;
-    if (lastModified) headers['if-modified-since'] = lastModified;
-
-    let response = await this.schedule(originOf(url), () => this.fetchWithRetry(url, headers));
-
+    let response = await this.fetchFollowingRedirects(url, headers, options, 'GET');
     if (response.status === 304) {
-      // Serve the cached body so adapters can re-parse it. If we only have
-      // validators (older cache entry), retry once without them.
       if (cached?.body !== undefined) {
         return {
-          url,
+          url: response.url || url,
           status: 304,
           notModified: true,
           body: cached.body,
@@ -117,18 +148,18 @@ export class CrawlerHttp {
           lastModified,
         };
       }
-      delete headers['if-none-match'];
-      delete headers['if-modified-since'];
-      response = await this.schedule(originOf(url), () => this.fetchWithRetry(url, headers));
+      response = await this.fetchFollowingRedirects(url, this.headers(options), options, 'GET');
     }
 
-    const body = await response.text();
+    const body = await this.readBody(response, this.maxResponseBytes);
     const responseEtag = response.headers.get('etag') ?? undefined;
     const responseLastModified = response.headers.get('last-modified') ?? undefined;
-    await this.writeConditional(url, responseEtag, responseLastModified, body);
+    if (response.status >= 200 && response.status < 300) {
+      await this.writeConditional(url, responseEtag, responseLastModified, body);
+    }
 
     return {
-      url,
+      url: response.url || url,
       status: response.status,
       notModified: false,
       body,
@@ -137,101 +168,195 @@ export class CrawlerHttp {
     };
   }
 
-  /** Fetch a URL and throw on non-2xx responses (304 cache hits are OK). */
   async getOrThrow(url: string, options: CrawlRequestOptions = {}): Promise<string> {
     const response = await this.get(url, options);
-    if (!response) {
-      throw new Error(`Refused to fetch ${url}: disallowed by robots.txt`);
-    }
+    if (!response) throw new RobotsBlockedError(url);
     if (!response.notModified && (response.status < 200 || response.status >= 300)) {
-      throw new Error(`Request to ${url} failed with HTTP ${response.status}`);
+      throw new AdapterHttpError(response.status, response.url || url);
     }
     return response.body;
   }
 
-  private limiterFor(origin: string): Bottleneck {
-    let limiter = this.limiters.get(origin);
+  /** A weekly freshness HEAD check. 404/410 are returned for the caller to deactivate. */
+  async head(url: string, options: CrawlRequestOptions = {}): Promise<CrawlResponse | null> {
+    assertHttpUrl(url);
+    await this.assertSourceAllowed(options.sourceId, url);
+    if (!(await this.checkRobots(url, options))) {
+      this.logger.warn(`Skipping HEAD ${url}: disallowed by robots.txt`);
+      return null;
+    }
+    const response = await this.fetchFollowingRedirects(url, this.headers(options), options, 'HEAD');
+    void response.body?.cancel().catch(() => undefined);
+    return {
+      url: response.url || url,
+      status: response.status,
+      notModified: response.status === 304,
+      body: '',
+      etag: response.headers.get('etag') ?? undefined,
+      lastModified: response.headers.get('last-modified') ?? undefined,
+    };
+  }
+
+  private headers(options: CrawlRequestOptions, etag?: string, lastModified?: string): Record<string, string> {
+    const headers: Record<string, string> = {
+      'user-agent': this.userAgent,
+      accept:
+        options.accept ?? 'text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.5',
+    };
+    if (etag) headers['if-none-match'] = etag;
+    if (lastModified) headers['if-modified-since'] = lastModified;
+    return headers;
+  }
+
+  private limiterFor(key: string, requestsPerSecond: number): Bottleneck {
+    let limiter = this.limiters.get(key);
     if (!limiter) {
       limiter = new Bottleneck({
-        minTime: Math.max(0, Math.round(1000 / Math.max(this.requestsPerSecond, 0.1))),
+        minTime: Math.max(0, Math.round(1000 / Math.max(requestsPerSecond, 0.1))),
         maxConcurrent: 1,
       });
-      this.limiters.set(origin, limiter);
+      this.limiters.set(key, limiter);
     }
     return limiter;
   }
 
-  private schedule<T>(origin: string, task: () => Promise<T>): Promise<T> {
-    return this.limiterFor(origin).schedule(task) as Promise<T>;
+  private schedule<T>(url: string, options: CrawlRequestOptions, task: () => Promise<T>): Promise<T> {
+    const domain = this.limiterFor(`domain:${originOf(url)}`, this.requestsPerSecond);
+    const sourceRate = options.requestsPerSecond;
+    if (options.sourceId && sourceRate) {
+      const source = this.limiterFor(`source:${options.sourceId}`, sourceRate);
+      return domain.schedule(() => source.schedule(task)) as Promise<T>;
+    }
+    return domain.schedule(task) as Promise<T>;
   }
 
-  private async fetchWithRetry(url: string, headers: Record<string, string>): Promise<Response> {
-    let lastError: unknown;
-    for (let attempt = 0; attempt < this.maxAttempts; attempt += 1) {
-      try {
-        const response = await fetch(url, {
-          headers,
-          redirect: 'follow',
-          signal: AbortSignal.timeout(this.timeoutMs),
-          dispatcher: this.agent,
-        } as unknown as RequestInit);
+  private async fetchFollowingRedirects(
+    url: string,
+    headers: Record<string, string>,
+    options: CrawlRequestOptions,
+    method: 'GET' | 'HEAD',
+    checkRedirectRobots = true,
+  ): Promise<Response> {
+    let currentUrl = url;
+    for (let redirects = 0; redirects <= 5; redirects += 1) {
+      const response = await this.fetchWithRetry(currentUrl, headers, options, method, checkRedirectRobots);
+      if (!REDIRECT_STATUSES.has(response.status)) return response;
+      const location = response.headers.get('location');
+      void response.body?.cancel().catch(() => undefined);
+      if (!location || redirects === 5) {
+        throw new AdapterNetworkError(currentUrl);
+      }
+      const nextUrl = new URL(location, currentUrl).toString();
+      assertHttpUrl(nextUrl);
+      await this.assertSourceAllowed(options.sourceId, nextUrl);
+      if (checkRedirectRobots && !(await this.checkRobots(nextUrl, options))) {
+        throw new RobotsBlockedError(nextUrl);
+      }
+      currentUrl = nextUrl;
+    }
+    throw new AdapterNetworkError(url);
+  }
 
-        if (response.status === 429 || response.status >= 500) {
-          if (attempt === this.maxAttempts - 1) {
-            return response;
-          }
-          const retryAfter = Number(response.headers.get('retry-after'));
-          const delay = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : BACKOFF_MS[attempt] ?? 8_000;
-          this.logger.warn(`HTTP ${response.status} from ${url}; retrying in ${delay}ms`);
-          await sleep(delay);
-          continue;
-        }
-        return response;
+  private async fetchWithRetry(
+    url: string,
+    headers: Record<string, string>,
+    options: CrawlRequestOptions,
+    method: 'GET' | 'HEAD',
+    checkRedirectRobots: boolean,
+  ): Promise<Response> {
+    for (let attempt = 0; attempt < this.maxAttempts; attempt += 1) {
+      await this.assertSourceAllowed(options.sourceId, url);
+      let response: Response;
+      try {
+        response = await this.schedule(url, options, async () =>
+          fetch(url, {
+            method,
+            headers,
+            redirect: 'manual',
+            signal: AbortSignal.timeout(this.timeoutMs),
+            dispatcher: this.agent,
+          } as unknown as RequestInit),
+        );
       } catch (error) {
-        lastError = error;
-        if (attempt === this.maxAttempts - 1) {
-          break;
-        }
-        const delay = BACKOFF_MS[attempt] ?? 8_000;
-        this.logger.warn(`Request to ${url} failed (${(error as Error).message}); retrying in ${delay}ms`);
-        await sleep(delay);
+        // Timeouts and other network errors are surfaced, not retried as if they were HTTP 5xx.
+        throw new AdapterNetworkError(url, { cause: error });
+      }
+
+      const retryable = response.status === 429 || response.status >= 500;
+      if (!retryable || attempt === this.maxAttempts - 1) return response;
+      void response.body?.cancel().catch(() => undefined);
+      const retryAfter = retryAfterMs(response.headers.get('retry-after'));
+      const exponential = this.retryBaseMs * 2 ** attempt;
+      const delay = retryAfter ?? Math.round(exponential * (1 + this.random() * 0.25));
+      this.logger.warn(`HTTP ${response.status} from ${url}; retrying in ${delay}ms`);
+      await this.sleep(delay);
+
+      if (checkRedirectRobots) {
+        await this.assertSourceAllowed(options.sourceId, url);
       }
     }
-    throw lastError instanceof Error ? lastError : new Error(`Request to ${url} failed`);
+    throw new AdapterNetworkError(url);
   }
 
-  private async isAllowed(url: string): Promise<boolean> {
-    const origin = originOf(url);
-    const robots = await this.loadRobots(origin);
-    if (!robots) {
-      return true;
+  private async readBody(response: Response, maxBytes: number): Promise<string> {
+    const contentLength = Number(response.headers.get('content-length'));
+    if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+      void response.body?.cancel().catch(() => undefined);
+      throw new ResponseTooLargeError(response.url, maxBytes);
     }
-    const allowed = robots.isAllowed(url, this.userAgent);
-    return allowed !== false;
+    if (!response.body) return '';
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let bytes = 0;
+    let body = '';
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        bytes += value.byteLength;
+        if (bytes > maxBytes) {
+          void reader.cancel().catch(() => undefined);
+          throw new ResponseTooLargeError(response.url, maxBytes);
+        }
+        body += decoder.decode(value, { stream: true });
+      }
+      body += decoder.decode();
+      return body;
+    } finally {
+      reader.releaseLock();
+    }
   }
 
-  private async loadRobots(origin: string) {
+  private async checkRobots(url: string, options: CrawlRequestOptions): Promise<boolean> {
+    if (options.respectRobots === false || !this.respectRobots) return true;
+    const robots = await this.loadRobots(originOf(url), options);
+    return robots ? robots.isAllowed(url, this.userAgent) !== false : true;
+  }
+
+  private async loadRobots(origin: string, options: CrawlRequestOptions) {
     const robotsUrl = `${origin}/robots.txt`;
     const cacheKey = `crawler:robots:${origin}`;
-
     try {
       const cached = await this.redis.get(cacheKey);
-      if (cached !== null) {
-        return cached ? robotsParser(robotsUrl, cached) : null;
-      }
+      if (cached !== null) return cached ? robotsParser(robotsUrl, cached) : null;
     } catch (error) {
       this.logger.debug(`Robots cache read failed for ${origin}: ${(error as Error).message}`);
     }
 
     let content = '';
     try {
-      const response = await this.schedule(origin, () => this.fetchWithRetry(robotsUrl, { 'user-agent': this.userAgent }));
-      if (response.ok) {
-        content = await response.text();
-      }
+      const response = await this.fetchFollowingRedirects(
+        robotsUrl,
+        { 'user-agent': this.userAgent, accept: 'text/plain' },
+        options,
+        'GET',
+        false,
+      );
+      if (response.ok) content = await this.readBody(response, Math.min(this.maxResponseBytes, 512 * 1024));
+      else void response.body?.cancel().catch(() => undefined);
     } catch (error) {
       this.logger.warn(`Could not fetch ${robotsUrl}: ${(error as Error).message}; assuming crawling is allowed`);
-      return null;
     }
 
     try {
@@ -239,16 +364,28 @@ export class CrawlerHttp {
     } catch (error) {
       this.logger.debug(`Robots cache write failed for ${origin}: ${(error as Error).message}`);
     }
-
     return content ? robotsParser(robotsUrl, content) : null;
   }
 
-  private async readConditional(
-    url: string,
-  ): Promise<{ etag?: string; lastModified?: string; body?: string } | null> {
+  private async assertSourceAllowed(sourceId: string | undefined, url: string): Promise<void> {
+    if (!sourceId || !this.db) return;
+    const source = await this.db.query.sources.findFirst({
+      where: eq(sources.id, sourceId),
+      columns: { killSwitch: true },
+    });
+    if (!source || source.killSwitch) throw new SourceKillSwitchError(sourceId, url);
+  }
+
+  private async readConditional(url: string): Promise<ConditionalCacheEntry | null> {
     try {
       const raw = await this.redis.get(`crawler:http:${url}`);
-      return raw ? (JSON.parse(raw) as { etag?: string; lastModified?: string; body?: string }) : null;
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Partial<ConditionalCacheEntry>;
+      return {
+        etag: typeof parsed.etag === 'string' ? parsed.etag : undefined,
+        lastModified: typeof parsed.lastModified === 'string' ? parsed.lastModified : undefined,
+        body: typeof parsed.body === 'string' ? parsed.body : undefined,
+      };
     } catch {
       return null;
     }
@@ -260,18 +397,16 @@ export class CrawlerHttp {
     lastModified: string | undefined,
     body: string,
   ): Promise<void> {
-    if (!etag && !lastModified) {
-      return;
-    }
+    if (!etag && !lastModified) return;
     try {
       await this.redis.set(
         `crawler:http:${url}`,
-        JSON.stringify({ etag, lastModified, body }),
+        JSON.stringify({ etag, lastModified, body } satisfies ConditionalCacheEntry),
         'EX',
         CONDITIONAL_CACHE_SECONDS,
       );
     } catch {
-      // Cache misses only cost an extra request; never fail the crawl.
+      // Cache failures only cost another request; they must not fail a crawl.
     }
   }
 }

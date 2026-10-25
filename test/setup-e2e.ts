@@ -1,10 +1,12 @@
 import { execSync } from 'child_process';
-import { vi } from 'vitest';
-import { Client } from 'pg';
-import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
+import { Test } from '@nestjs/testing';
+import { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { PostgreSqlContainer } from '@testcontainers/postgresql';
+import { StartedRedisContainer } from '@testcontainers/redis';
+import { RedisContainer } from '@testcontainers/redis';
+import { Client } from 'pg';
+import { vi } from 'vitest';
 import { MailService } from '../src/common/mail/mail.service';
 import { S3_CLIENT } from '../src/modules/profiles/s3-client.provider';
 import { createFakeS3Client } from './fixtures/fake-s3-client';
@@ -27,11 +29,25 @@ export async function createTestApp(): Promise<TestContext> {
   process.env.CSRF_SECRET = 'test-csrf-secret-0123456789';
   process.env.APP_URL = 'http://localhost:3000';
   process.env.NODE_ENV = 'test';
+  process.env.WORKER = 'true';
 
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
   await client.query('CREATE EXTENSION IF NOT EXISTS vector');
   await client.query('CREATE EXTENSION IF NOT EXISTS pg_trgm');
+  await client.query(`
+    CREATE OR REPLACE FUNCTION public.uuid_v7() RETURNS uuid AS $$
+    DECLARE
+      timestamp_ms bigint := floor(extract(epoch from clock_timestamp()) * 1000)::bigint;
+      uuid_bytes bytea;
+    BEGIN
+      uuid_bytes := substring(int8send(timestamp_ms) from 3 for 6) || gen_random_bytes(10);
+      uuid_bytes := set_byte(uuid_bytes, 6, (get_byte(uuid_bytes, 6) & 15) | 112);
+      uuid_bytes := set_byte(uuid_bytes, 8, (get_byte(uuid_bytes, 8) & 63) | 128);
+      RETURN encode(uuid_bytes, 'hex')::uuid;
+    END;
+    $$ LANGUAGE plpgsql;
+  `);
   await client.end();
 
   execSync('pnpm drizzle-kit push --force', {

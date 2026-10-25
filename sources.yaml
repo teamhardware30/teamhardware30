@@ -16,7 +16,7 @@ sources:
     kind: arbeitnow
     baseUrl: https://www.arbeitnow.com
     cron: "30 */6 * * *"
-    enabled: true
+    enabled: false
     config:
       maxPages: 3
 
@@ -24,7 +24,7 @@ sources:
     kind: greenhouse
     baseUrl: https://boards.greenhouse.io/stripe
     cron: "0 */6 * * *"
-    enabled: true
+    enabled: false
     config:
       companies:
         - token: stripe
@@ -34,7 +34,7 @@ sources:
     kind: greenhouse
     baseUrl: https://boards.greenhouse.io/figma
     cron: "15 */6 * * *"
-    enabled: true
+    enabled: false
     config:
       companies:
         - token: figma

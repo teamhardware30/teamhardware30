@@ -1,6 +1,7 @@
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { Observable } from 'rxjs';
 import { generateToken } from '../security/csrf';
 
 declare module 'express-session' {
@@ -22,6 +23,8 @@ export class LocalsInterceptor implements NestInterceptor {
     res.locals.user = req.user ?? null;
     res.locals.csrfToken = generateToken(req, res);
     res.locals.flash = req.session?.flash ?? [];
+    res.locals.currentPath = req.path;
+    res.locals.currentUrl = req.originalUrl;
     if (req.session) {
       req.session.flash = [];
     }

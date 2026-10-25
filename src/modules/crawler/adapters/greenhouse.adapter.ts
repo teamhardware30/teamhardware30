@@ -1,9 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { Source } from '../../../db/schema';
-import { CrawlerHttp } from '../http';
-import { JobDto, RawJob } from '../dto/job.dto';
 import { htmlToText, looksRemote } from '../crawler.utils';
-import { SourceAdapter, asString, resolveCompanyTokens } from './source-adapter.interface';
+import { JobDto, RawItem} from '../dto/job.dto';
+import { normalizeJobDto, rawItem } from '../dto/job.dto';
+import { CrawlerHttp } from '../http';
+import {
+  SourceAdapter} from './source-adapter.interface';
+import {
+  asString,
+  parseJson,
+  recordArray,
+  recordValue,
+  resolveCompanyTokens,
+  sourceRequestOptions,
+} from './source-adapter.interface';
 
 interface GreenhouseJob {
   id?: number | string;
@@ -21,21 +31,28 @@ export class GreenhouseAdapter implements SourceAdapter {
 
   constructor(private readonly http: CrawlerHttp) {}
 
-  async *fetch(source: Source): AsyncIterable<RawJob> {
+  async *fetch(source: Source): AsyncIterable<RawItem> {
     for (const { token, name } of resolveCompanyTokens(source.config)) {
       const url = `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(token)}/jobs?content=true`;
-      const body = await this.http.getOrThrow(url, { accept: 'application/json' });
-      const parsed = JSON.parse(body) as { jobs?: GreenhouseJob[] };
-      for (const job of parsed.jobs ?? []) {
-        yield { ...(job as unknown as RawJob), __company: name ?? token, __token: token };
+      const body = await this.http.getOrThrow(url, sourceRequestOptions(source, 'application/json'));
+      const payload = recordValue(parseJson(body, url), url);
+      for (const job of recordArray(payload.jobs, url)) {
+        yield rawItem(job, {
+          sourceId: source.id,
+          sourceName: source.name,
+          baseUrl: source.baseUrl,
+          sourceUrl: asString(job.absolute_url),
+          company: name ?? token,
+          token,
+        });
       }
     }
   }
 
-  normalize(raw: RawJob): JobDto {
-    const job = raw as unknown as GreenhouseJob & { __company?: string; __token?: string };
+  normalize(raw: RawItem): JobDto {
+    const job = raw.payload as unknown as GreenhouseJob;
     const location = asString(job.location?.name);
-    const title = asString(job.title) ?? 'Untitled role';
+    const title = asString(job.title);
     const descriptionHtml = asString(job.content) ?? '<p></p>';
     const skills = (job.metadata ?? [])
       .filter((entry) => /skill|technolog|tag/i.test(entry.name ?? ''))
@@ -43,19 +60,22 @@ export class GreenhouseAdapter implements SourceAdapter {
       .map((value) => asString(value))
       .filter((value): value is string => Boolean(value));
 
-    return {
-      externalId: asString(job.id),
-      sourceUrl: asString(job.absolute_url) ?? `https://boards.greenhouse.io/${job.__token ?? ''}`,
-      applyUrl: asString(job.absolute_url),
-      title,
-      company: asString(job.__company) ?? 'Unknown company',
-      location,
-      remote: looksRemote(location, title),
-      descriptionHtml,
-      descriptionText: htmlToText(descriptionHtml),
-      skills,
-      applyMethod: 'external_ats',
-      postedAt: job.updated_at ? new Date(job.updated_at) : undefined,
-    };
+    return normalizeJobDto(
+      {
+        externalId: asString(job.id),
+        sourceUrl: asString(job.absolute_url) ?? `https://boards.greenhouse.io/${raw.metadata.token ?? ''}`,
+        applyUrl: asString(job.absolute_url),
+        title,
+        company: raw.metadata.company,
+        location,
+        remote: looksRemote(location, title),
+        descriptionHtml,
+        descriptionText: htmlToText(descriptionHtml),
+        skills,
+        applyMethod: 'external_ats',
+        postedAt: job.updated_at,
+      },
+      raw.metadata.sourceUrl,
+    );
   }
 }

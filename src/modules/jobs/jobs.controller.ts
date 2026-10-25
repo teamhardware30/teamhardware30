@@ -1,6 +1,9 @@
-import { Controller, Get, NotFoundException, Param, Query, Render } from '@nestjs/common';
-import { JobsService, JobSearchParams, PostedWithin, POSTED_WITHIN_VALUES } from './jobs.service';
+import { Controller, Get, Header, NotFoundException, Param, Query, Render } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Job, Company, Category, Source } from '../../db/schema';
+import { JobSearchParams, PostedWithin} from './jobs.service';
+import { JobsService } from './jobs.service';
+import { POSTED_WITHIN_VALUES } from './jobs.service';
 
 interface JobDetail extends Job {
   companyEntity: Company | null;
@@ -8,27 +11,34 @@ interface JobDetail extends Job {
   source: Source | null;
 }
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function single(value: unknown): string | undefined {
-  if (Array.isArray(value)) {
-    return single(value[0]);
-  }
-  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+function single(value: unknown, maxLength = 500): string | undefined {
+  if (Array.isArray(value)) return single(value[0], maxLength);
+  return typeof value === 'string' && value.trim() ? value.trim().slice(0, maxLength) : undefined;
+}
+
+function salary(value: unknown): number | undefined {
+  const raw = single(value, 20);
+  if (!raw || !/^\d+$/.test(raw)) return undefined;
+  const parsed = Number(raw);
+  return Number.isSafeInteger(parsed) && parsed >= 0 && parsed <= 1_000_000_000 ? parsed : undefined;
 }
 
 function parseParams(query: Record<string, unknown>): JobSearchParams {
   const postedWithin = single(query.postedWithin);
   return {
-    q: single(query.q),
-    category: single(query.category),
-    location: single(query.location),
+    q: single(query.q, 300),
+    category: single(query.category, 200),
+    location: single(query.location, 300),
     remote: single(query.remote) === 'true' || single(query.remote) === '1',
-    employmentType: single(query.employmentType),
+    employmentType: single(query.employmentType, 50),
+    salaryMin: salary(query.salaryMin ?? query.minSalary),
+    salaryMax: salary(query.salaryMax ?? query.maxSalary),
     postedWithin: POSTED_WITHIN_VALUES.includes(postedWithin as PostedWithin)
       ? (postedWithin as PostedWithin)
       : undefined,
-    cursor: single(query.cursor),
+    cursor: single(query.cursor, 2_000),
   };
 }
 
@@ -39,6 +49,8 @@ function buildUrl(params: JobSearchParams, cursor?: string): string {
   if (params.location) search.set('location', params.location);
   if (params.remote) search.set('remote', 'true');
   if (params.employmentType) search.set('employmentType', params.employmentType);
+  if (params.salaryMin !== undefined) search.set('salaryMin', String(params.salaryMin));
+  if (params.salaryMax !== undefined) search.set('salaryMax', String(params.salaryMax));
   if (params.postedWithin) search.set('postedWithin', params.postedWithin);
   if (cursor) search.set('cursor', cursor);
   const qs = search.toString();
@@ -47,7 +59,16 @@ function buildUrl(params: JobSearchParams, cursor?: string): string {
 
 @Controller('jobs')
 export class JobsController {
-  constructor(private readonly jobsService: JobsService) {}
+  constructor(
+    private readonly jobsService: JobsService,
+    private readonly config: ConfigService,
+  ) {}
+
+  @Get('categories')
+  @Render('jobs/categories')
+  async categories() {
+    return { categories: await this.jobsService.listCategoriesWithCounts() };
+  }
 
   @Get()
   @Render('jobs/index')
@@ -66,28 +87,35 @@ export class JobsController {
       facets,
       selectedCategory,
       hasFilters: Boolean(
-        params.q || params.category || params.location || params.remote || params.employmentType || params.postedWithin,
+        params.q ||
+          params.category ||
+          params.location ||
+          params.remote ||
+          params.employmentType ||
+          params.salaryMin !== undefined ||
+          params.salaryMax !== undefined ||
+          params.postedWithin,
       ),
       pageTitle: params.q ? `“${params.q}” jobs` : 'Browse jobs',
     };
   }
 
   @Get(':id')
+  @Header('Cache-Control', 'public, max-age=300')
   @Render('jobs/show')
   async show(@Param('id') id: string) {
-    if (!UUID_PATTERN.test(id)) {
-      throw new NotFoundException('Job not found');
-    }
+    if (!UUID_PATTERN.test(id)) throw new NotFoundException('Job not found');
     const job = (await this.jobsService.getJob(id)) as JobDetail | null;
-    if (!job) {
-      throw new NotFoundException('Job not found');
-    }
+    if (!job) throw new NotFoundException('Job not found');
 
+    const appUrl = (this.config.get<string>('APP_URL') ?? 'http://localhost:3000').replace(/\/$/, '');
+    const canonicalUrl = `${appUrl}/jobs/${job.id}`;
     return {
       job,
+      canonicalUrl,
       pageTitle: `${job.title} at ${job.company} — Job Copilot`,
       metaDescription: truncate(job.descriptionText, 160),
-      jsonLd: buildJsonLd(job),
+      jsonLd: buildJsonLd(job, canonicalUrl),
     };
   }
 }
@@ -97,25 +125,31 @@ function truncate(value: string, length: number): string {
   return normalized.length <= length ? normalized : `${normalized.slice(0, length - 1).trimEnd()}…`;
 }
 
-function buildJsonLd(job: JobDetail): string {
+function buildJsonLd(job: JobDetail, canonicalUrl: string): string {
   const payload: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': 'JobPosting',
     title: job.title,
-    description: job.descriptionHtml,
+    // Plain text cannot carry unsafe source markup into the structured data.
+    description: job.descriptionText,
     datePosted: (job.postedAt ?? job.createdAt).toISOString(),
-    employmentType: job.employmentType ?? undefined,
+    validThrough: job.expiresAt?.toISOString(),
+    employmentType: job.employmentType?.toUpperCase(),
     hiringOrganization: {
       '@type': 'Organization',
       name: job.company,
       ...(job.companyEntity?.websiteUrl ? { sameAs: job.companyEntity.websiteUrl } : {}),
     },
-    url: job.sourceUrl,
-    directApply: job.applyMethod === 'onsite',
+    url: canonicalUrl,
+    mainEntityOfPage: canonicalUrl,
+    ...(job.applyMethod === 'onsite' ? { directApply: true } : {}),
   };
 
   if (job.remote) {
     payload.jobLocationType = 'TELECOMMUTE';
+    if (job.country) {
+      payload.applicantLocationRequirements = { '@type': 'Country', name: job.country };
+    }
   }
   if (job.city || job.country) {
     payload.jobLocation = {
@@ -127,14 +161,14 @@ function buildJsonLd(job: JobDetail): string {
       },
     };
   }
-  if (job.salaryMin || job.salaryMax) {
+  if (job.salaryMin !== null || job.salaryMax !== null) {
     payload.baseSalary = {
       '@type': 'MonetaryAmount',
       currency: job.salaryCurrency ?? 'USD',
       value: {
         '@type': 'QuantitativeValue',
-        ...(job.salaryMin ? { minValue: job.salaryMin } : {}),
-        ...(job.salaryMax ? { maxValue: job.salaryMax } : {}),
+        ...(job.salaryMin !== null ? { minValue: job.salaryMin } : {}),
+        ...(job.salaryMax !== null ? { maxValue: job.salaryMax } : {}),
         unitText: (job.salaryPeriod ?? 'year').toUpperCase(),
       },
     };

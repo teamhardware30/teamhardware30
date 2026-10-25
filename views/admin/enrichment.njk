@@ -1,0 +1,22 @@
+{% extends "layouts/base.njk" %}
+{% block title %}Job enrichment — Job Copilot{% endblock %}
+{% block content %}
+  <h1 class="text-2xl font-semibold">Job enrichment</h1>
+  <p class="mt-2 text-sm text-brand-text/60">Re-enrich one job by ID or a bounded date range.</p>
+
+  <form method="post" action="/admin/jobs/re-enrich" class="mt-6 space-y-4 rounded-lg border border-brand-text/10 bg-white p-4">
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+    <div class="grid gap-3 sm:grid-cols-3">
+      <label class="text-sm">From <input type="date" name="from" required class="mt-1 w-full rounded-md border border-brand-text/20 px-3 py-2" /></label>
+      <label class="text-sm">To <input type="date" name="to" required class="mt-1 w-full rounded-md border border-brand-text/20 px-3 py-2" /></label>
+      <label class="text-sm">Limit <input type="number" name="limit" value="25" min="1" max="250" class="mt-1 w-full rounded-md border border-brand-text/20 px-3 py-2" /></label>
+    </div>
+    <button type="submit" class="rounded-md bg-brand-primary px-4 py-2 text-sm text-white hover:bg-brand-primary/90">Re-enrich date range</button>
+  </form>
+
+  <form method="post" action="/admin/jobs/re-enrich-one" class="mt-6 space-y-3 rounded-lg border border-brand-text/10 bg-white p-4">
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+    <label class="text-sm">Job ID <input type="text" name="jobId" required class="mt-1 w-full rounded-md border border-brand-text/20 px-3 py-2" /></label>
+    <button type="submit" class="rounded-md bg-brand-primary px-4 py-2 text-sm text-white hover:bg-brand-primary/90">Re-enrich one job</button>
+  </form>
+{% endblock %}

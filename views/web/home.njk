@@ -6,6 +6,12 @@
 {% block title %}Job Copilot — Find your next role faster{% endblock %}
 
 {% block content %}
+  {% if user and newMatches %}
+    <div class="mb-6 rounded-md border border-brand-primary/20 bg-brand-primary/10 px-4 py-3 text-sm text-brand-primary">
+      You have {{ newMatches }} new match{{ 'es' if newMatches != 1 else '' }} since your last visit.
+      <a href="/matches" class="font-medium underline">Review them</a>
+    </div>
+  {% endif %}
   <div class="grid items-center gap-10 py-10 sm:py-16 lg:grid-cols-2 lg:gap-12">
     <div class="text-center lg:text-left">
       {{ badge("AI-powered job search", "accent") }}

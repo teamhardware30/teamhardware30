@@ -1,0 +1,13 @@
+{% extends "layouts/base.njk" %}
+{% block title %}New onsite job — Job Copilot{% endblock %}
+{% block content %}
+  <h1 class="text-2xl font-semibold">New onsite job</h1>
+  <form method="post" action="/employer/jobs" class="mt-6 space-y-4">
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+    <label class="block text-sm">Title <input name="title" required class="mt-1 w-full rounded-md border border-brand-text/20 px-3 py-2" /></label>
+    <label class="block text-sm">Company <input name="company" required class="mt-1 w-full rounded-md border border-brand-text/20 px-3 py-2" /></label>
+    <label class="block text-sm">Location <input name="location" class="mt-1 w-full rounded-md border border-brand-text/20 px-3 py-2" /></label>
+    <label class="block text-sm">Description <textarea name="description" rows="5" class="mt-1 w-full rounded-md border border-brand-text/20 px-3 py-2"></textarea></label>
+    <button type="submit" class="rounded-md bg-brand-primary px-4 py-2 text-sm text-white">Create job</button>
+  </form>
+{% endblock %}

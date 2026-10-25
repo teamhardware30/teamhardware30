@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import {
   pgTable,
   uuid,
@@ -10,11 +11,11 @@ import {
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
-import { vector, tsvector } from './vector';
-import { companies } from './companies.schema';
 import { categories } from './categories.schema';
+import { companies } from './companies.schema';
 import { sources } from './sources.schema';
+import { users } from './users.schema';
+import { vector, tsvector } from './vector';
 
 export const applyMethodEnum = pgEnum('apply_method', ['onsite', 'email', 'external_ats']);
 
@@ -27,6 +28,7 @@ export const jobs = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     sourceId: uuid('source_id').references(() => sources.id, { onDelete: 'set null' }),
     companyId: uuid('company_id').references(() => companies.id, { onDelete: 'set null' }),
+    employerId: uuid('employer_id').references(() => users.id, { onDelete: 'set null' }),
     categoryId: uuid('category_id').references(() => categories.id, { onDelete: 'set null' }),
 
     externalId: text('external_id'),
@@ -40,11 +42,17 @@ export const jobs = pgTable(
     city: text('city'),
     country: text('country'),
     remote: boolean('remote').notNull().default(false),
+    remoteType: text('remote_type'),
+    remoteRegions: text('remote_regions').array().notNull().default([]),
     employmentType: text('employment_type'),
+    seniority: text('seniority'),
 
     descriptionHtml: text('description_html').notNull(),
     descriptionText: text('description_text').notNull(),
     skills: jsonb('skills').$type<string[]>().notNull().default([]),
+    requiredSkills: text('required_skills').array().notNull().default([]),
+    preferredSkills: text('preferred_skills').array().notNull().default([]),
+    summary: text('summary'),
 
     salaryMin: integer('salary_min'),
     salaryMax: integer('salary_max'),
@@ -53,6 +61,9 @@ export const jobs = pgTable(
 
     applyMethod: applyMethodEnum('apply_method').notNull().default('external_ats'),
     applyEmail: text('apply_email'),
+    contentHash: text('content_hash'),
+    enrichedAt: timestamp('enriched_at', { withTimezone: true }),
+    enrichmentSource: text('enrichment_source'),
 
     embedding: vector('embedding'),
     searchVector: tsvector('search_vector').generatedAlwaysAs(
@@ -61,7 +72,9 @@ export const jobs = pgTable(
 
     isActive: boolean('is_active').notNull().default(true),
     postedAt: timestamp('posted_at', { withTimezone: true }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+    lastCheckedAt: timestamp('last_checked_at', { withTimezone: true }),
     crawledAt: timestamp('crawled_at', { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

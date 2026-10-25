@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { PassportStrategy } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
-import { Strategy, Profile, VerifyCallback } from 'passport-google-oauth20';
+import { PassportStrategy } from '@nestjs/passport';
+import { Profile } from 'passport-google-oauth20';
+import { Strategy } from 'passport-google-oauth20';
+import { User } from '../../../db/schema';
 import { AuthService } from '../auth.service';
 
 @Injectable()
@@ -15,19 +17,21 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     });
   }
 
-  async validate(_accessToken: string, _refreshToken: string, profile: Profile, done: VerifyCallback) {
-    const email = profile.emails?.[0]?.value;
-    if (!email) {
-      done(new Error('Google profile did not include an email address'), false);
-      return;
-    }
-    const user = await this.authService.findOrCreateOAuthUser(
+  async validate(_accessToken: string, _refreshToken: string, profile: Profile): Promise<User> {
+    const verifiedEntry = profile.emails?.find((entry) => entry.verified === true);
+    const verifiedClaim =
+      profile._json?.email_verified === true && typeof profile._json.email === 'string'
+        ? profile._json.email
+        : undefined;
+    const email = verifiedEntry?.value ?? verifiedClaim ?? profile.emails?.[0]?.value ?? profile._json?.email;
+
+    return this.authService.findOrCreateOAuthUser(
       'google',
       profile.id,
       email,
       profile.displayName,
       profile.photos?.[0]?.value,
+      verifiedEntry !== undefined || verifiedClaim !== undefined,
     );
-    done(null, user);
   }
 }

@@ -1,0 +1,23 @@
+{% extends "layouts/base.njk" %}
+{% from "components/score_ring.njk" import score_ring %}
+{% block title %}Your matches — Job Copilot{% endblock %}
+{% block content %}
+  <h1 class="text-2xl font-semibold">Your matches</h1>
+  <form method="get" action="/matches" class="mt-4 flex flex-wrap gap-3" hx-get="/matches" hx-target="#match-results" hx-push-url="true">
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+    <select name="status" class="rounded-md border border-brand-text/20 bg-white px-3 py-2 text-sm">
+      <option value="all">All</option>
+      <option value="saved">Saved</option>
+      <option value="hidden">Hidden</option>
+    </select>
+    <button type="submit" class="rounded-md bg-brand-primary px-4 py-2 text-sm text-white">Filter</button>
+  </form>
+  <div id="match-results" class="mt-6 grid gap-4">
+    {% for match in matches %}
+      {% include "matches/partials/card.njk" %}
+    {% else %}
+      {% from "components/empty_state.njk" import empty_state %}
+      {{ empty_state("No matches yet", "Matches are computed after your profile is embedded and jobs are enriched.", "Browse jobs", "/jobs") }}
+    {% endfor %}
+  </div>
+{% endblock %}

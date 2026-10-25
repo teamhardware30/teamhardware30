@@ -1,0 +1,21 @@
+{% macro apply_button(job, opts={}) %}
+  <div x-data="{ open: false }" class="inline-block">
+    <button type="button" class="rounded-md bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90" @click="open = true" {% if opts.disabled %}disabled{% endif %}>
+      Apply
+    </button>
+    <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div class="w-full max-w-md rounded-lg bg-white p-6" @click.outside="open = false">
+        <h2 class="text-lg font-semibold">Confirm application</h2>
+        <p class="mt-2 text-sm text-brand-text/70">Job Copilot will send your selected resume and profile details for {{ job.title }}.</p>
+        <form method="post" action="/applications" hx-post="/applications" hx-target="#apply-result-{{ job.id }}" hx-swap="innerHTML" class="mt-4 space-y-3">
+          <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+          <input type="hidden" name="jobId" value="{{ job.id }}" />
+          <input type="hidden" name="resumeId" value="{{ opts.resumeId or '' }}" />
+          <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="consent" value="true" required /> I consent to this application being submitted</label>
+          <button type="submit" class="w-full rounded-md bg-brand-primary px-4 py-2 text-sm text-white">Confirm and apply</button>
+        </form>
+        <div id="apply-result-{{ job.id }}" class="mt-3"></div>
+      </div>
+    </div>
+  </div>
+{% endmacro %}

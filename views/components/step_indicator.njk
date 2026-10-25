@@ -1,0 +1,12 @@
+{% macro step_indicator(current) %}
+  {% set steps = ['Upload CV', 'Parsing', 'Profile', 'Preferences'] %}
+  <ol class="mb-8 grid grid-cols-4 gap-2 text-center text-xs font-medium text-brand-text/50" aria-label="Onboarding progress">
+    {% for label in steps %}
+      {% set number = loop.index %}
+      <li class="{{ 'text-brand-primary' if current >= number }}" aria-current="{{ 'step' if current == number else 'false' }}">
+        <span class="mb-1 flex h-6 w-6 items-center justify-center rounded-full border {{ 'border-brand-primary bg-brand-primary text-white' if current >= number else 'border-brand-text/20' }}">{{ number }}</span>
+        {{ label }}
+      </li>
+    {% endfor %}
+  </ol>
+{% endmacro %}

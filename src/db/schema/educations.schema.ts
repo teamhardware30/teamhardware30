@@ -1,8 +1,9 @@
-import { pgTable, uuid, text, date, integer, timestamp } from 'drizzle-orm/pg-core';
+import { date, integer, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import { createdAtColumn, idColumn, updatedAtColumn } from './columns';
 import { seekerProfiles } from './profiles.schema';
 
 export const educations = pgTable('educations', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: idColumn(),
   profileId: uuid('profile_id').notNull().references(() => seekerProfiles.id, { onDelete: 'cascade' }),
   school: text('school').notNull(),
   degree: text('degree'),
@@ -11,7 +12,8 @@ export const educations = pgTable('educations', {
   endDate: date('end_date'),
   description: text('description'),
   sortOrder: integer('sort_order').notNull().default(0),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdAt: createdAtColumn(),
+  updatedAt: updatedAtColumn(),
 });
 
 export type Education = typeof educations.$inferSelect;

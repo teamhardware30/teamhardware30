@@ -1,0 +1,8 @@
+{% macro checkbox(name, label, opts={}) %}
+  {% set id = opts.id or name %}
+  <div class="flex items-start gap-2">
+    <input id="{{ id }}" name="{{ name }}" type="checkbox" value="{{ opts.value or 'on' }}" {% if opts.checked %}checked{% endif %} {% if opts.disabled %}disabled{% endif %} class="mt-0.5 rounded border-brand-text/30 text-brand-primary focus:ring-brand-primary" />
+    <label for="{{ id }}" class="text-sm text-brand-text">{{ label }}</label>
+  </div>
+  {% if opts.error %}<p class="mt-1 text-xs text-red-600">{{ opts.error }}</p>{% endif %}
+{% endmacro %}

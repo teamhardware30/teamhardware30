@@ -1,13 +1,14 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Queue } from 'bullmq';
-import { CrawlerService } from './crawler.service';
 import {
   CRAWL_SOURCE_JOB,
   CRAWL_SOURCE_QUEUE,
   DEACTIVATE_STALE_JOB,
   MAINTENANCE_QUEUE,
 } from './crawler.constants';
+import { CrawlerService } from './crawler.service';
 
 export interface CrawlSourceJobData {
   sourceId: string;
@@ -43,12 +44,12 @@ export class CrawlerScheduler implements OnModuleInit {
 
   async syncSchedulers(): Promise<void> {
     const sources = await this.crawlerService.listEnabledSources();
-    const desired = new Set(sources.map((source) => `source:${source.id}`));
+    const desired = new Set(sources.map((source) => `source-${source.id}`));
 
     for (const source of sources) {
       try {
         await this.crawlQueue.upsertJobScheduler(
-          `source:${source.id}`,
+          `source-${source.id}`,
           { pattern: source.cron },
           { name: CRAWL_SOURCE_JOB, data: { sourceId: source.id } },
         );
@@ -60,7 +61,7 @@ export class CrawlerScheduler implements OnModuleInit {
     try {
       const existing = await this.crawlQueue.getJobSchedulers(0, -1, true);
       for (const scheduler of existing) {
-        if (scheduler.id?.startsWith('source:') && !desired.has(scheduler.id)) {
+        if (scheduler.id?.startsWith('source-') && !desired.has(scheduler.id)) {
           await this.crawlQueue.removeJobScheduler(scheduler.id);
           this.logger.log(`Removed scheduler for deleted/disabled source ${scheduler.id}`);
         }

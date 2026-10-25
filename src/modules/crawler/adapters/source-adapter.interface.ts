@@ -1,14 +1,14 @@
 import { Source } from '../../../db/schema';
-import { JobDto, RawJob } from '../dto/job.dto';
+import { JobDto, RawItem} from '../dto/job.dto';
+import { canonicalHttpUrl } from '../dto/job.dto';
+import { CrawlRequestOptions } from '../http';
+import { AdapterSchemaError } from './errors';
 
-/**
- * Contract every job source implements. `fetch` yields raw records (one per
- * posting) and `normalize` turns a raw record into the validated JobDto.
- */
+/** Contract every job source implements. Invalid items fail at normalize(), not mid-upsert. */
 export interface SourceAdapter {
   readonly kind: Source['kind'];
-  fetch(source: Source): AsyncIterable<RawJob>;
-  normalize(raw: RawJob): JobDto;
+  fetch(source: Source): AsyncIterable<RawItem>;
+  normalize(raw: RawItem): JobDto;
 }
 
 export interface CompanyToken {
@@ -47,6 +47,37 @@ export function resolveCompanyTokens(config: Record<string, unknown>): CompanyTo
 
   const token = asString(config.token);
   return token ? [{ token }] : [];
+}
+
+export function sourceRequestOptions(source: Source, accept?: string): CrawlRequestOptions {
+  const configuredRate = asNumber(source.config.requestsPerSecond);
+  return {
+    sourceId: source.id,
+    requestsPerSecond: configuredRate && configuredRate > 0 ? configuredRate : undefined,
+    accept,
+  };
+}
+
+export function parseJson(body: string, sourceUrl: string): unknown {
+  try {
+    return JSON.parse(body) as unknown;
+  } catch (error) {
+    throw new AdapterSchemaError(`Malformed JSON returned by ${sourceUrl}`, sourceUrl, { cause: error });
+  }
+}
+
+export function recordValue(value: unknown, sourceUrl: string): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new AdapterSchemaError(`Expected a JSON object from ${sourceUrl}`, sourceUrl);
+  }
+  return value as Record<string, unknown>;
+}
+
+export function recordArray(value: unknown, sourceUrl: string): Record<string, unknown>[] {
+  if (!Array.isArray(value)) {
+    throw new AdapterSchemaError(`Expected a JSON array from ${sourceUrl}`, sourceUrl);
+  }
+  return value.filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === 'object' && !Array.isArray(entry));
 }
 
 export function asString(value: unknown): string | undefined {
@@ -94,7 +125,7 @@ export function absoluteUrl(value: unknown, base: string): string | undefined {
     return undefined;
   }
   try {
-    return new URL(raw, base).toString();
+    return canonicalHttpUrl(new URL(raw, base).toString());
   } catch {
     return undefined;
   }
@@ -113,8 +144,8 @@ export function parseSalary(text: string | undefined): {
   const currencySymbol = text.match(/[$€£¥]/)?.[0];
   const currency = currencySymbol
     ? ({ $: 'USD', '€': 'EUR', '£': 'GBP', '¥': 'JPY' } as Record<string, string>)[currencySymbol]
-    : /[A-Z]{3}/.test(text)
-      ? text.match(/[A-Z]{3}/)?.[0]
+    : /\b[A-Z]{3}\b/.test(text)
+      ? text.match(/\b[A-Z]{3}\b/)?.[0]
       : undefined;
 
   const period = /\b(hour|hr)\b/i.test(text)

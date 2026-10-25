@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /jobs
+Allow: /sitemap.xml
+Disallow: /profile
+Disallow: /matches
+Disallow: /applications
+Disallow: /admin
+Disallow: /onboarding
+Disallow: /ats
+
+Sitemap: /sitemap.xml

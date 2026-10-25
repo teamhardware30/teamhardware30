@@ -1,0 +1,10 @@
+{% from "components/input.njk" import input %}
+{% from "components/textarea.njk" import textarea %}
+{% macro education_fields(values, fieldErrors, prefix='') %}
+  {{ input("school", { id: prefix ~ "school", label: "School", value: values.school, error: fieldErrors.school, required: true }) }}
+  {{ input("degree", { id: prefix ~ "degree", label: "Degree", value: values.degree, error: fieldErrors.degree }) }}
+  {{ input("fieldOfStudy", { id: prefix ~ "fieldOfStudy", label: "Field of study", value: values.fieldOfStudy, error: fieldErrors.fieldOfStudy }) }}
+  {{ input("startDate", { id: prefix ~ "startDate", label: "Start date", placeholder: "YYYY or YYYY-MM", value: values.startDate, error: fieldErrors.startDate }) }}
+  {{ input("endDate", { id: prefix ~ "endDate", label: "End date", placeholder: "YYYY or YYYY-MM", value: values.endDate, error: fieldErrors.endDate }) }}
+  <div class="sm:col-span-2">{{ textarea("description", { id: prefix ~ "description", label: "Additional details", value: values.description, error: fieldErrors.description, rows: 3 }) }}</div>
+{% endmacro %}

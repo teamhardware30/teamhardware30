@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Job } from '../src/db/schema';
 import { Database } from '../src/db/db.provider';
+import { Job } from '../src/db/schema';
 import { jobFingerprint, normalizeText } from '../src/modules/crawler/crawler.utils';
 import { DedupeService } from '../src/modules/crawler/dedupe.service';
 
@@ -21,8 +21,18 @@ function makeJob(overrides: Partial<Job> = {}): Job {
     country: 'Kenya',
     remote: false,
     employmentType: 'full_time',
+    seniority: null,
+    remoteType: null,
+    remoteRegions: [],
+    requiredSkills: [],
+    preferredSkills: [],
+    contentHash: null,
+    enrichedAt: null,
+    enrichmentSource: null,
     descriptionHtml: '<p>Build things.</p>',
     descriptionText: 'Build things.',
+    summary: null,
+    employerId: null,
     skills: [],
     salaryMin: null,
     salaryMax: null,
@@ -34,7 +44,9 @@ function makeJob(overrides: Partial<Job> = {}): Job {
     searchVector: '',
     isActive: true,
     postedAt: new Date(),
+    expiresAt: null,
     lastSeenAt: new Date(),
+    lastCheckedAt: null,
     crawledAt: new Date(),
     createdAt: new Date(),
     updatedAt: new Date(),

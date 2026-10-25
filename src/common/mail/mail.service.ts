@@ -32,4 +32,21 @@ export class MailService {
       this.logger.error(`Failed to send verification email to ${to}: ${String(error)}`);
     }
   }
+
+  async sendApplicationEmail(input: { to: string; replyTo: string; subject: string; text: string; attachment?: Buffer; fileName?: string }): Promise<string | null> {
+    try {
+      const result = await this.transport.sendMail({
+        from: this.from,
+        to: input.to,
+        replyTo: input.replyTo,
+        subject: input.subject,
+        text: input.text,
+        attachments: input.attachment ? [{ filename: input.fileName ?? 'resume.pdf', content: input.attachment }] : undefined,
+      });
+      return result.messageId ?? null;
+    } catch (error) {
+      this.logger.error(`Failed to send application email to ${input.to}: ${String(error)}`);
+      return null;
+    }
+  }
 }

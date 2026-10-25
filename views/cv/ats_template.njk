@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ resume.contact.full_name }} — CV</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.4; margin: 24px; color: #17211b; }
+    h1 { font-size: 18pt; margin: 0 0 4px; }
+    h2 { font-size: 12pt; margin: 14px 0 6px; border-bottom: 1px solid #d1d5db; padding-bottom: 2px; }
+    p { margin: 4px 0; }
+    ul { margin: 4px 0 8px 18px; padding: 0; }
+    @media print { body { margin: 12mm; } }
+  </style>
+</head>
+<body>
+  <h1>{{ resume.contact.full_name }}</h1>
+  <p>{{ resume.contact.location or '' }}{% if resume.contact.email %} · {{ resume.contact.email }}{% endif %}{% if resume.contact.phone %} · {{ resume.contact.phone }}{% endif %}</p>
+  {% if resume.headline %}<p><strong>{{ resume.headline }}</strong></p>{% endif %}
+  {% if resume.summary %}<p>{{ resume.summary }}</p>{% endif %}
+
+  <h2>Experience</h2>
+  {% for item in resume.experiences %}
+    <p><strong>{{ item.title }}</strong> — {{ item.company }}{% if item.location %}, {{ item.location }}{% endif %}</p>
+    <p class="dates">{{ item.start or '' }} – {{ 'Present' if item.end == 'present' else (item.end or '') }}</p>
+    <ul>{% for bullet in item.bullets %}<li>{{ bullet }}</li>{% endfor %}</ul>
+  {% endfor %}
+
+  <h2>Education</h2>
+  {% for item in resume.education %}
+    <p><strong>{{ item.degree or 'Studies' }}</strong> — {{ item.school }}{% if item.field %}, {{ item.field }}{% endif %}</p>
+    <p class="dates">{{ item.start or '' }} – {{ item.end or '' }}</p>
+  {% endfor %}
+
+  <h2>Skills</h2>
+  <p>{{ resume.skills | map(attribute='name') | join(', ') }}</p>
+
+  {% if resume.certifications %}
+    <h2>Certifications</h2>
+    <ul>{% for item in resume.certifications %}<li>{{ item }}</li>{% endfor %}</ul>
+  {% endif %}
+</body>
+</html>
+EOF

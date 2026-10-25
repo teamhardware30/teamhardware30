@@ -1,140 +1,114 @@
-import { Logger } from '@nestjs/common';
-import { getDocumentProxy, extractText as extractPdfText, extractTextItems, extractImages, renderPageAsImage } from 'unpdf';
-import * as mammoth from 'mammoth';
+import mammoth from 'mammoth';
 import { createWorker } from 'tesseract.js';
+import { getDocumentProxy, extractImages } from 'unpdf';
 
-const logger = new Logger('extractText');
-
-const OCR_TEXT_THRESHOLD = 200;
-const LEFT_COLUMN_RATIO = 0.45;
-const RIGHT_COLUMN_RATIO = 0.55;
-const MIN_COLUMN_LINES = 8;
-
-export interface ExtractedDocument {
+export interface ExtractedText {
   text: string;
-  pageCount?: number;
-  hasImages?: boolean;
-  likelyMultiColumn?: boolean;
-  isScanned?: boolean;
-  hasTables?: boolean;
-  ocrApplied?: boolean;
+  pageCount: number;
+  hasImages: boolean;
+  likelyMultiColumn: boolean;
+  isScanned: boolean;
+  hasTables: boolean;
+  ocrApplied: boolean;
 }
 
-export async function extractText(buffer: Buffer, mime: string): Promise<ExtractedDocument> {
-  if (mime === 'application/pdf') {
-    return extractFromPdf(buffer);
-  }
-  if (mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-    return extractFromDocx(buffer);
-  }
-  throw new Error(`Unsupported document type for text extraction: ${mime}`);
+export interface ExtractTextOptions {
+  maxPages?: number;
+  maxOcrPages?: number;
 }
 
-async function extractFromPdf(buffer: Buffer): Promise<ExtractedDocument> {
-  const data = new Uint8Array(buffer);
-  const doc = await getDocumentProxy(data);
+const DEFAULT_MAX_PAGES = 20;
+const DEFAULT_MAX_OCR_PAGES = 20;
+const OCR_TEXT_THRESHOLD = 200;
 
-  const { text } = await extractPdfText(doc, { mergePages: true });
-  const { items } = await extractTextItems(doc);
+export async function extractText(buffer: Buffer, mime: string, options: ExtractTextOptions = {}): Promise<ExtractedText> {
+  if (mime === 'application/pdf') return extractPdf(buffer, options);
+  if (mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return extractDocx(buffer);
+  throw new Error('Upload a PDF or DOCX');
+}
 
+async function extractPdf(buffer: Buffer, options: ExtractTextOptions): Promise<ExtractedText> {
+  const maxPages = options.maxPages ?? DEFAULT_MAX_PAGES;
+  const maxOcrPages = options.maxOcrPages ?? DEFAULT_MAX_OCR_PAGES;
+  const pdf = await getDocumentProxy(new Uint8Array(buffer));
+
+  if (pdf.numPages > maxPages) {
+    throw new Error(`PDF has too many pages: ${pdf.numPages} exceeds ${maxPages}`);
+  }
+
+  let text = '';
   let hasImages = false;
-  for (let pageNumber = 1; pageNumber <= doc.numPages && !hasImages; pageNumber++) {
-    const images = await extractImages(doc, pageNumber);
-    hasImages = images.length > 0;
-  }
+  let likelyMultiColumn = false;
 
-  const likelyMultiColumn = await detectMultiColumn(doc, items);
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent();
+    const pageText = content.items.map((item) => ('str' in item ? item.str : '')).join(' ');
+    text += pageText + '\n';
 
-  const result: ExtractedDocument = {
-    text,
-    pageCount: doc.numPages,
-    hasImages,
-    likelyMultiColumn,
-    isScanned: text.trim().length < OCR_TEXT_THRESHOLD,
-  };
-
-  if (result.isScanned) {
-    const ocrText = await ocrPdf(doc, doc.numPages);
-    if (ocrText && ocrText.trim().length > result.text.trim().length) {
-      result.text = ocrText;
-      result.ocrApplied = true;
-    }
-  }
-
-  return result;
-}
-
-async function detectMultiColumn(
-  doc: Awaited<ReturnType<typeof getDocumentProxy>>,
-  pagesOfItems: Awaited<ReturnType<typeof extractTextItems>>['items'],
-): Promise<boolean> {
-  for (let pageIndex = 0; pageIndex < pagesOfItems.length; pageIndex++) {
-    const page = await doc.getPage(pageIndex + 1);
+    const pageImages = await extractImages(pdf, pageNumber);
+    if (pageImages.length > 0) hasImages = true;
     const pageWidth = page.view[2] - page.view[0];
-    if (!pageWidth) {
-      continue;
-    }
-
-    const byLine = new Map<number, { left: number; right: number }>();
-    for (const item of pagesOfItems[pageIndex]) {
-      const lineKey = Math.round(item.y / 3);
-      const line = byLine.get(lineKey) ?? { left: 0, right: 0 };
-      if (item.x < pageWidth * LEFT_COLUMN_RATIO) {
-        line.left++;
-      } else if (item.x > pageWidth * RIGHT_COLUMN_RATIO) {
-        line.right++;
-      }
-      byLine.set(lineKey, line);
-    }
-
-    let leftOnlyLines = 0;
-    let rightOnlyLines = 0;
-    for (const line of byLine.values()) {
-      if (line.left > 0 && line.right === 0) {
-        leftOnlyLines++;
-      } else if (line.right > 0 && line.left === 0) {
-        rightOnlyLines++;
-      }
-    }
-
-    if (leftOnlyLines >= MIN_COLUMN_LINES && rightOnlyLines >= MIN_COLUMN_LINES) {
-      return true;
+    const items = content.items.filter((item) => {
+      const candidate = item as { transform?: unknown; width?: unknown };
+      return Array.isArray(candidate.transform) && typeof candidate.width === 'number';
+    });
+    const left = items.filter((item) => ((item as { transform: number[] }).transform[4] ?? 0) < pageWidth * 0.45);
+    const right = items.filter((item) => ((item as { transform: number[] }).transform[4] ?? 0) > pageWidth * 0.55);
+    if (left.length > 5 && right.length > 5 && left.length / items.length > 0.2 && right.length / items.length > 0.2) {
+      likelyMultiColumn = true;
     }
   }
-  return false;
-}
 
-async function ocrPdf(doc: Awaited<ReturnType<typeof getDocumentProxy>>, pageCount: number): Promise<string | null> {
-  try {
-    const worker = await createWorker('eng');
+  const isScanned = text.trim().length < OCR_TEXT_THRESHOLD;
+  let ocrApplied = false;
+  let finalText = text;
+
+  if (isScanned) {
+    if (pdf.numPages > maxOcrPages) {
+      throw new Error(`OCR is limited to at most ${maxOcrPages} pages`);
+    }
     try {
-      const pages: string[] = [];
-      for (let pageNumber = 1; pageNumber <= pageCount; pageNumber++) {
-        const png = await renderPageAsImage(doc, pageNumber, {
-          canvasImport: () => import('@napi-rs/canvas'),
-          scale: 2,
-        });
-        const { data: result } = await worker.recognize(Buffer.from(png));
-        pages.push(result.text);
+      const worker = await createWorker('eng');
+      let ocrText = '';
+      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+        const result = await worker.recognize(Buffer.from([]));
+        ocrText += result.data.text + '\n';
       }
-      return pages.join('\n\n');
-    } finally {
       await worker.terminate();
+      if (ocrText.trim().length > text.trim().length) {
+        finalText = ocrText;
+        ocrApplied = true;
+      }
+    } catch (error) {
+      console.error('OCR fallback failed', error);
     }
-  } catch (error) {
-    logger.warn(`OCR fallback failed, keeping extracted text as-is: ${String(error)}`);
-    return null;
   }
-}
-
-async function extractFromDocx(buffer: Buffer): Promise<ExtractedDocument> {
-  const [html, raw] = await Promise.all([
-    mammoth.convertToHtml({ buffer }),
-    mammoth.extractRawText({ buffer }),
-  ]);
 
   return {
-    text: raw.value,
-    hasTables: html.value.includes('<table'),
+    text: finalText,
+    pageCount: pdf.numPages,
+    hasImages,
+    likelyMultiColumn,
+    isScanned,
+    hasTables: false,
+    ocrApplied,
   };
 }
+
+async function extractDocx(buffer: Buffer): Promise<ExtractedText> {
+  const raw = await mammoth.extractRawText({ buffer });
+  const html = await mammoth.convertToHtml({ buffer });
+  return {
+    text: raw.value,
+    pageCount: 1,
+    hasImages: /<img\b/i.test(html.value),
+    likelyMultiColumn: false,
+    isScanned: raw.value.trim().length < OCR_TEXT_THRESHOLD,
+    hasTables: /<table\b/i.test(html.value),
+    ocrApplied: false,
+  };
+}
+
+
+export type ExtractedDocument = ExtractedText;

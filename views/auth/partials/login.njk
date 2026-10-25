@@ -25,6 +25,19 @@
     {{ button("Sign in", { type: "submit", class: "w-full" }) }}
   </form>
 
+  <form
+    method="post"
+    action="/resend-verification"
+    hx-post="/resend-verification"
+    hx-target="#login-form-wrapper"
+    hx-swap="outerHTML"
+    class="mt-4 space-y-3 border-t border-brand-text/10 pt-4"
+  >
+    <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+    {{ input("email", { label: "Email verification", type: "email", value: values.email, hint: "Send or resend a verification email", error: fieldErrors.email }) }}
+    {{ button("Resend verification email", { type: "submit", variant: "ghost", class: "w-full" }) }}
+  </form>
+
   <div class="mt-4 flex gap-2">
     <a href="/auth/google" class="flex-1 rounded-md border border-brand-text/20 px-3 py-2 text-center text-sm hover:bg-brand-text/5">Continue with Google</a>
     <a href="/auth/linkedin" class="flex-1 rounded-md border border-brand-text/20 px-3 py-2 text-center text-sm hover:bg-brand-text/5">Continue with LinkedIn</a>

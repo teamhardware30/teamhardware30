@@ -18,6 +18,7 @@ export const sources = pgTable('sources', {
   config: jsonb('config').$type<Record<string, unknown>>().notNull().default({}),
   cron: text('cron').notNull().default('0 */6 * * *'),
   enabled: boolean('enabled').notNull().default(true),
+  killSwitch: boolean('kill_switch').notNull().default(false),
   lastRunAt: timestamp('last_run_at', { withTimezone: true }),
   lastRunStatus: text('last_run_status'),
   lastRunMessage: text('last_run_message'),

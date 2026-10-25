@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { buildPdfFixture } from './fixtures/pdf-fixture';
+import { extractText } from '../src/modules/profiles/extract-text';
 import { buildDocxFixture } from './fixtures/docx-fixture';
+import { buildPdfFixture } from './fixtures/pdf-fixture';
 
 // tesseract.js's createWorker downloads language data from a remote CDN by
 // default — stub it so the OCR-fallback path stays hermetic and fast in CI.
@@ -12,8 +13,6 @@ vi.mock('tesseract.js', () => ({
     terminate: vi.fn(async () => undefined),
   })),
 }));
-
-import { extractText } from '../src/modules/profiles/extract-text';
 
 const PDF_MIME = 'application/pdf';
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -38,7 +37,10 @@ describe('extractText', () => {
     expect(result.text).toContain('Senior Software Engineer');
     expect(result.pageCount).toBe(1);
     expect(result.hasImages).toBe(false);
+    expect(result.likelyMultiColumn).toBe(false);
     expect(result.isScanned).toBe(false);
+    expect(result.hasTables).toBe(false);
+    expect(result.ocrApplied).toBe(false);
   });
 
   it('extracts text from a LinkedIn-downloaded PDF profile', async () => {
@@ -78,7 +80,13 @@ describe('extractText', () => {
     expect(result.hasTables).toBe(false);
   });
 
-  it('rejects unsupported mime types', async () => {
-    await expect(extractText(Buffer.from('x'), 'application/zip')).rejects.toThrow();
+  it('enforces PDF page and OCR page safeguards', async () => {
+    const buffer = buildPdfFixture(['Hi']);
+    await expect(extractText(buffer, PDF_MIME, { maxPages: 0 })).rejects.toThrow('too many pages');
+    await expect(extractText(buffer, PDF_MIME, { maxOcrPages: 0 })).rejects.toThrow('at most 0 pages');
+  });
+
+  it('rejects unsupported mime types with a friendly error', async () => {
+    await expect(extractText(Buffer.from('x'), 'application/zip')).rejects.toThrow('Upload a PDF or DOCX');
   });
 });

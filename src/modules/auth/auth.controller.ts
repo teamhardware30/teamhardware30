@@ -2,18 +2,19 @@ import { Body, Controller, Get, Post, Query, Render, Req, Res, UseGuards } from 
 import { AuthGuard } from '@nestjs/passport';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { Request, Response } from 'express';
-import { AuthService } from './auth.service';
-import { loginSchema, registerSchema } from './schemas/auth.schemas';
 import { User } from '../../db/schema';
+import { AuthService } from './auth.service';
+import { safeNext, pushFlash } from './auth.utils';
+import { GoogleOAuthGuard, LinkedinOAuthGuard } from './guards/oauth.guard';
+import { loginSchema, registerSchema, resendVerificationSchema } from './schemas/auth.schemas';
+
+const RESEND_VERIFICATION_MESSAGE =
+  'If an account with that email needs verification, a new verification link has been sent.';
 
 function loginUser(req: Request, user: User): Promise<void> {
   return new Promise((resolve, reject) => {
     req.logIn(user, (error) => (error ? reject(error) : resolve()));
   });
-}
-
-function safeNext(next: unknown): string {
-  return typeof next === 'string' && next.startsWith('/') ? next : '/profile';
 }
 
 @Controller()
@@ -104,6 +105,24 @@ export class AuthController {
     res.redirect('/login');
   }
 
+  @Post('resend-verification')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  async resendVerification(@Body() body: Record<string, string>, @Req() req: Request, @Res() res: Response) {
+    const parsed = resendVerificationSchema.safeParse(body);
+    if (parsed.success) {
+      await this.authService.resendVerificationEmail(parsed.data.email);
+    }
+
+    pushFlash(req, 'info', RESEND_VERIFICATION_MESSAGE);
+    if (req.headers['hx-request']) {
+      res.setHeader('HX-Redirect', '/login');
+      res.sendStatus(200);
+    } else {
+      res.redirect('/login');
+    }
+  }
+
   @Post('logout')
   logout(@Req() req: Request, @Res() res: Response) {
     req.logout(() => res.redirect('/login'));
@@ -114,8 +133,9 @@ export class AuthController {
   linkedinAuth() {}
 
   @Get('auth/linkedin/callback')
-  @UseGuards(AuthGuard('linkedin'))
-  linkedinCallback(@Res() res: Response) {
+  @UseGuards(LinkedinOAuthGuard)
+  async linkedinCallback(@Req() req: Request, @Res() res: Response) {
+    await loginUser(req, req.user as User);
     res.redirect('/profile');
   }
 
@@ -124,8 +144,9 @@ export class AuthController {
   googleAuth() {}
 
   @Get('auth/google/callback')
-  @UseGuards(AuthGuard('google'))
-  googleCallback(@Res() res: Response) {
+  @UseGuards(GoogleOAuthGuard)
+  async googleCallback(@Req() req: Request, @Res() res: Response) {
+    await loginUser(req, req.user as User);
     res.redirect('/profile');
   }
 }
@@ -139,11 +160,4 @@ function fieldErrorsOf(error: { issues: { path: (string | number)[]; message: st
     }
   }
   return fieldErrors;
-}
-
-function pushFlash(req: Request, type: 'success' | 'error' | 'info', message: string): void {
-  if (!req.session) {
-    return;
-  }
-  req.session.flash = [...(req.session.flash ?? []), { type, message }];
 }

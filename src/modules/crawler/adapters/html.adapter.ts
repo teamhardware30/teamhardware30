@@ -1,11 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Source } from '../../../db/schema';
-import { CrawlerHttp } from '../http';
-import { JobDto, RawJob } from '../dto/job.dto';
-import { escapeHtml, htmlToText, looksRemote, normalizeEmploymentType, splitLocation } from '../crawler.utils';
-import { SourceAdapter, absoluteUrl, asNumber, asString, parseSalary } from './source-adapter.interface';
+import { Injectable } from '@nestjs/common';
 import { load } from 'cheerio';
-import type { CheerioAPI, Cheerio } from 'cheerio';
+import { CheerioAPI } from 'cheerio';
+import { Source } from '../../../db/schema';
+import { escapeHtml, htmlToText, looksRemote, normalizeEmploymentType, splitLocation } from '../crawler.utils';
+import { JobDto, RawItem} from '../dto/job.dto';
+import { normalizeJobDto, rawItem } from '../dto/job.dto';
+import { CrawlerHttp } from '../http';
+import {
+  SourceAdapter} from './source-adapter.interface';
+import {
+  absoluteUrl,
+  asNumber,
+  asString,
+  parseSalary,
+  sourceRequestOptions,
+} from './source-adapter.interface';
 
 interface HtmlConfig {
   listingUrl: string;
@@ -28,17 +37,16 @@ const DEFAULT_FIELDS: Record<string, string> = {
 @Injectable()
 export class HtmlAdapter implements SourceAdapter {
   readonly kind = 'html' as const;
-  private readonly logger = new Logger(HtmlAdapter.name);
 
   constructor(private readonly http: CrawlerHttp) {}
 
-  async *fetch(source: Source): AsyncIterable<RawJob> {
+  async *fetch(source: Source): AsyncIterable<RawItem> {
     const config = source.config as unknown as HtmlConfig;
     if (!config.listingUrl || !config.itemSelector) {
       throw new Error(`HTML source ${source.name} needs config.listingUrl and config.itemSelector`);
     }
 
-    const maxPages = asNumber(config.maxPages) ?? 3;
+    const maxPages = Math.min(Math.max(asNumber(config.maxPages) ?? 3, 1), 100);
     const fields = { ...DEFAULT_FIELDS, ...(config.fields ?? {}) };
     const visited = new Set<string>();
     let pageUrl: string | undefined = config.listingUrl;
@@ -46,43 +54,42 @@ export class HtmlAdapter implements SourceAdapter {
 
     while (pageUrl && page < maxPages && !visited.has(pageUrl)) {
       visited.add(pageUrl);
-      const html = await this.http.getOrThrow(pageUrl);
+      const html = await this.http.getOrThrow(pageUrl, sourceRequestOptions(source));
       const $ = load(html);
-
       const items = $(config.itemSelector);
+
       for (let index = 0; index < items.length; index += 1) {
         const element = items.eq(index);
-        const raw: RawJob = {
-          __sourceName: source.name,
-          __baseUrl: pageUrl,
-        };
-
+        const payload: Record<string, unknown> = {};
         for (const [key, selector] of Object.entries(fields)) {
           const value = pick($, element, selector);
-          if (value) {
-            raw[key] = value;
-          }
+          if (value) payload[key] = value;
         }
 
-        const detailUrl = absoluteUrl(asString(raw.url), pageUrl);
+        const warnings: string[] = [];
+        const detailUrl = absoluteUrl(payload.url, pageUrl);
         if (detailUrl) {
-          raw.__detailUrl = detailUrl;
-          raw.url = detailUrl;
-          if (config.detailDescriptionSelector && !raw.description) {
+          payload.url = detailUrl;
+          if (config.detailDescriptionSelector && !payload.description) {
             try {
-              const detailHtml = await this.http.getOrThrow(detailUrl);
+              const detailHtml = await this.http.getOrThrow(detailUrl, sourceRequestOptions(source));
               const detail$ = load(detailHtml);
               const description = detail$(config.detailDescriptionSelector).first().html();
-              if (description) {
-                raw.description = description.trim();
-              }
+              if (description) payload.description = description.trim();
             } catch (error) {
-              this.logger.warn(`Could not fetch HTML detail page ${detailUrl}: ${(error as Error).message}`);
+              warnings.push(`Could not fetch HTML detail page: ${(error as Error).message}`);
             }
           }
         }
 
-        yield raw;
+        yield rawItem(payload, {
+          sourceId: source.id,
+          sourceName: source.name,
+          baseUrl: pageUrl,
+          sourceUrl: detailUrl ?? pageUrl,
+          company: source.name,
+          warnings,
+        });
       }
 
       pageUrl = config.paginationSelector
@@ -92,66 +99,68 @@ export class HtmlAdapter implements SourceAdapter {
     }
   }
 
-  normalize(raw: RawJob): JobDto {
-    const title = asString(raw.title) ?? 'Untitled role';
-    const location = asString(raw.location);
-    const split = splitLocation(location ?? asString(raw.city));
-    const description = asString(raw.description);
+  normalize(raw: RawItem): JobDto {
+    const payload = raw.payload;
+    const title = asString(payload.title);
+    const location = asString(payload.location);
+    const split = splitLocation(location ?? asString(payload.city));
+    const description = asString(payload.description);
     const descriptionHtml = description
       ? /<[a-z][\s\S]*>/i.test(description)
         ? description
         : `<p>${escapeHtml(description)}</p>`
       : '<p></p>';
-    const remoteValue = asString(raw.remote)?.toLowerCase();
-    const salary = parseSalary(asString(raw.salary));
+    const remoteValue = asString(payload.remote)?.toLowerCase();
+    const salary = parseSalary(asString(payload.salary));
+    const baseUrl = raw.metadata.sourceUrl ?? raw.metadata.baseUrl ?? '';
+    const sourceUrl = absoluteUrl(payload.url, baseUrl) ?? baseUrl;
 
-    return {
-      externalId: asString(raw.externalId),
-      sourceUrl: asString(raw.url) ?? asString(raw.__detailUrl) ?? asString(raw.__baseUrl) ?? '',
-      applyUrl: asString(raw.applyUrl) ?? asString(raw.url) ?? asString(raw.__detailUrl),
-      title,
-      company: asString(raw.company) ?? asString(raw.__sourceName) ?? 'Unknown company',
-      location,
-      city: asString(raw.city) ?? split.city,
-      country: asString(raw.country) ?? split.country,
-      remote:
-        remoteValue === 'true' ||
-        remoteValue === 'yes' ||
-        remoteValue === '1' ||
-        looksRemote(location, title),
-      employmentType: normalizeEmploymentType(asString(raw.employmentType)),
-      descriptionHtml,
-      descriptionText: htmlToText(descriptionHtml),
-      skills: asString(raw.skills)
-        ?.split(',')
-        .map((skill) => skill.trim())
-        .filter(Boolean) ?? [],
-      ...salary,
-      applyMethod: 'external_ats',
-      postedAt: parseDate(asString(raw.postedAt)),
-    };
+    return normalizeJobDto(
+      {
+        externalId: asString(payload.externalId),
+        sourceUrl,
+        applyUrl: absoluteUrl(payload.applyUrl, baseUrl) ?? sourceUrl,
+        title,
+        company: asString(payload.company) ?? raw.metadata.company,
+        location,
+        city: asString(payload.city) ?? split.city,
+        country: asString(payload.country) ?? split.country,
+        remote:
+          remoteValue === 'true' ||
+          remoteValue === 'yes' ||
+          remoteValue === '1' ||
+          looksRemote(location, title),
+        employmentType: normalizeEmploymentType(asString(payload.employmentType)),
+        descriptionHtml,
+        descriptionText: htmlToText(descriptionHtml),
+        skills:
+          asString(payload.skills)
+            ?.split(',')
+            .map((skill) => skill.trim())
+            .filter(Boolean) ?? [],
+        ...salary,
+        applyMethod: 'external_ats',
+        postedAt: asString(payload.postedAt),
+        expiresAt: asString(payload.expiresAt),
+      },
+      raw.metadata.sourceUrl,
+    );
   }
 }
 
-function pick($: CheerioAPI, element: Cheerio<any>, selector: string): string | undefined {
-  if (!selector) {
-    return undefined;
-  }
+interface Selection {
+  readonly length: number;
+  find(selector: string): Selection;
+  first(): Selection;
+  attr(name: string): string | undefined;
+  text(): string;
+}
+
+function pick($: CheerioAPI, element: Selection, selector: string): string | undefined {
+  if (!selector) return undefined;
   const [rawSelector, attribute] = selector.split('@');
   const target = rawSelector === 'self' || rawSelector === '' ? element : element.find(rawSelector).first();
-  if (!target.length) {
-    return undefined;
-  }
-  if (attribute) {
-    return target.attr(attribute)?.trim();
-  }
+  if (!target.length) return undefined;
+  if (attribute) return target.attr(attribute)?.trim();
   return target.text().trim() || undefined;
-}
-
-function parseDate(value: string | undefined): Date | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? undefined : date;
 }

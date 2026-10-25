@@ -1,35 +1,34 @@
-{% from "components/input.njk" import input %}
 {% from "components/button.njk" import button %}
+{% from "profiles/partials/experience-fields.njk" import experience_fields %}
+{% from "profiles/partials/education-fields.njk" import education_fields %}
 
-<div class="space-y-10" x-data="{ addingExperience: false, addingEducation: false }">
-  <section>
-    <h1 class="text-xl font-semibold text-brand-text">Review your profile</h1>
-    <p class="mt-1 text-sm text-brand-text/60">We pulled this from your CV — add anything we missed.</p>
-  </section>
+<div class="space-y-10" x-data="{ addingExperience: {{ 'true' if fieldErrors and showExperienceForm else 'false' }}, addingEducation: {{ 'true' if fieldErrors and showEducationForm else 'false' }} }">
+  {% if not embedded %}
+    <section>
+      <h1 class="text-xl font-semibold text-brand-text">Review your profile</h1>
+      <p class="mt-1 text-sm text-brand-text/60">We pulled this from your CV — edit, remove, or add anything needed.</p>
+    </section>
+  {% endif %}
 
   <section>
     <div class="flex items-center justify-between">
       <h2 class="text-sm font-semibold uppercase tracking-wide text-brand-text/60">Experience</h2>
-      <button type="button" x-on:click="addingExperience = !addingExperience" class="text-sm text-brand-primary hover:underline">+ Add experience</button>
+      <button type="button" @click="addingExperience = !addingExperience" class="text-sm text-brand-primary hover:underline">+ Add experience</button>
     </div>
     <div class="mt-3">{% include "profiles/partials/experiences-list.njk" %}</div>
-
     <form
+      method="post"
+      action="/onboarding/experiences"
       x-show="addingExperience"
       x-cloak
       class="mt-3 grid grid-cols-1 gap-3 rounded-md border border-brand-text/10 bg-white p-4 sm:grid-cols-2"
       hx-post="/onboarding/experiences"
       hx-target="#experiences-list"
       hx-swap="outerHTML"
-      hx-on::after-request="addingExperience = false"
     >
       <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
-      {{ input("title", { label: "Job title", required: true }) }}
-      {{ input("company", { label: "Company", required: true }) }}
-      {{ input("location", { label: "Location" }) }}
-      <label class="mt-6 flex items-center gap-2 text-sm"><input type="checkbox" name="current" /> I currently work here</label>
-      {{ input("startDate", { label: "Start date", type: "date" }) }}
-      {{ input("endDate", { label: "End date", type: "date" }) }}
+      <input type="hidden" name="returnTo" value="{{ returnTo or '/onboarding' }}" />
+      {{ experience_fields(values or {}, fieldErrors or {}, 'new-experience-') }}
       <div class="sm:col-span-2">{{ button("Save experience", { type: "submit" }) }}</div>
     </form>
   </section>
@@ -37,33 +36,34 @@
   <section>
     <div class="flex items-center justify-between">
       <h2 class="text-sm font-semibold uppercase tracking-wide text-brand-text/60">Education</h2>
-      <button type="button" x-on:click="addingEducation = !addingEducation" class="text-sm text-brand-primary hover:underline">+ Add education</button>
+      <button type="button" @click="addingEducation = !addingEducation" class="text-sm text-brand-primary hover:underline">+ Add education</button>
     </div>
     <div class="mt-3">{% include "profiles/partials/educations-list.njk" %}</div>
-
     <form
+      method="post"
+      action="/onboarding/educations"
       x-show="addingEducation"
       x-cloak
       class="mt-3 grid grid-cols-1 gap-3 rounded-md border border-brand-text/10 bg-white p-4 sm:grid-cols-2"
       hx-post="/onboarding/educations"
       hx-target="#educations-list"
       hx-swap="outerHTML"
-      hx-on::after-request="addingEducation = false"
     >
       <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
-      {{ input("school", { label: "School", required: true }) }}
-      {{ input("degree", { label: "Degree" }) }}
-      {{ input("fieldOfStudy", { label: "Field of study" }) }}
-      {{ input("startDate", { label: "Start date", type: "date" }) }}
-      {{ input("endDate", { label: "End date", type: "date" }) }}
+      <input type="hidden" name="returnTo" value="{{ returnTo or '/onboarding' }}" />
+      {{ education_fields(values or {}, fieldErrors or {}, 'new-education-') }}
       <div class="sm:col-span-2">{{ button("Save education", { type: "submit" }) }}</div>
     </form>
   </section>
 
   <section>
     <h2 class="text-sm font-semibold uppercase tracking-wide text-brand-text/60">Skills</h2>
-    <div class="relative mt-3" x-data="{ q: '' }">
+    <form method="post" action="/onboarding/skills" class="relative mt-3" x-data="{ q: '' }" hx-post="/onboarding/skills" hx-target="#skill-chips" hx-swap="outerHTML">
+      <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+      <input type="hidden" name="returnTo" value="{{ returnTo or '/onboarding' }}" />
+      <label for="skill-query" class="sr-only">Add a skill</label>
       <input
+        id="skill-query"
         type="text"
         placeholder="Type a skill and press enter"
         x-model="q"
@@ -71,23 +71,22 @@
         hx-trigger="keyup changed delay:300ms"
         hx-target="#skill-suggestions"
         hx-swap="outerHTML"
-        hx-include="this"
         name="q"
-        x-on:keydown.enter.prevent="$event.target.dispatchEvent(new Event('submit-skill'))"
         class="w-full rounded-md border border-brand-text/20 bg-white px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
       />
       <div id="skill-suggestions"></div>
-    </div>
+      {% if fieldErrors.name %}<p class="mt-1 text-xs text-red-600">{{ fieldErrors.name }}</p>{% endif %}
+    </form>
     <div class="mt-3">{% include "profiles/partials/skill-chips.njk" %}</div>
   </section>
 
-  <div class="flex justify-end">
-    <button
-      type="button"
-      hx-get="/onboarding/steps/4"
-      hx-target="#onboarding-step"
-      hx-swap="innerHTML"
-      class="rounded-md bg-brand-primary px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-primary/90"
-    >Continue</button>
-  </div>
+  {% if not embedded %}
+    <div class="flex items-center justify-between">
+      <a href="/onboarding/steps/1" hx-get="/onboarding/steps/1" hx-target="#onboarding-step" hx-swap="innerHTML" class="text-sm text-brand-primary hover:underline">Back to upload</a>
+      <form method="post" action="/onboarding/steps/4" hx-post="/onboarding/steps/4" hx-target="#onboarding-step" hx-swap="innerHTML">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
+        {{ button("Continue", { type: "submit" }) }}
+      </form>
+    </div>
+  {% endif %}
 </div>

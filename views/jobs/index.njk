@@ -61,6 +61,34 @@
           </select>
         </div>
 
+        <fieldset>
+          <legend class="text-sm font-medium text-brand-text">Salary (minimum / maximum)</legend>
+          <div class="mt-1 grid grid-cols-2 gap-2">
+            <label class="sr-only" for="salaryMin">Minimum salary</label>
+            <input
+              type="number"
+              min="0"
+              step="1000"
+              id="salaryMin"
+              name="salaryMin"
+              value="{{ filters.salaryMin if filters.salaryMin is not none else '' }}"
+              placeholder="Minimum"
+              class="w-full rounded-md border border-brand-text/20 px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+            />
+            <label class="sr-only" for="salaryMax">Maximum salary</label>
+            <input
+              type="number"
+              min="0"
+              step="1000"
+              id="salaryMax"
+              name="salaryMax"
+              value="{{ filters.salaryMax if filters.salaryMax is not none else '' }}"
+              placeholder="Maximum"
+              class="w-full rounded-md border border-brand-text/20 px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+            />
+          </div>
+        </fieldset>
+
         <div>
           <label for="postedWithin" class="text-sm font-medium text-brand-text">Posted within</label>
           <select id="postedWithin" name="postedWithin" class="mt-1 w-full rounded-md border border-brand-text/20 bg-white px-3 py-2 text-sm">

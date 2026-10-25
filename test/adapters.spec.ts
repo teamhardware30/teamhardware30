@@ -1,21 +1,23 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { http, HttpResponse } from 'msw';
-import { setupServer } from 'msw/node';
 import { ConfigService } from '@nestjs/config';
 import type Redis from 'ioredis';
+import { http, HttpResponse } from 'msw';
+import { setupServer } from 'msw/node';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { Source } from '../src/db/schema';
-import { CrawlerHttp } from '../src/modules/crawler/http';
-import { GreenhouseAdapter } from '../src/modules/crawler/adapters/greenhouse.adapter';
-import { LeverAdapter } from '../src/modules/crawler/adapters/lever.adapter';
-import { AshbyAdapter } from '../src/modules/crawler/adapters/ashby.adapter';
-import { RemotiveAdapter } from '../src/modules/crawler/adapters/remotive.adapter';
 import { ArbeitnowAdapter } from '../src/modules/crawler/adapters/arbeitnow.adapter';
-import { JsonLdAdapter } from '../src/modules/crawler/adapters/jsonld.adapter';
+import { AshbyAdapter } from '../src/modules/crawler/adapters/ashby.adapter';
+import { AdapterSchemaError } from '../src/modules/crawler/adapters/errors';
+import { GreenhouseAdapter } from '../src/modules/crawler/adapters/greenhouse.adapter';
 import { HtmlAdapter } from '../src/modules/crawler/adapters/html.adapter';
+import { JsonLdAdapter } from '../src/modules/crawler/adapters/jsonld.adapter';
+import { LeverAdapter } from '../src/modules/crawler/adapters/lever.adapter';
+import { RemotiveAdapter } from '../src/modules/crawler/adapters/remotive.adapter';
 import { SourceAdapter } from '../src/modules/crawler/adapters/source-adapter.interface';
-import { RawJob } from '../src/modules/crawler/dto/job.dto';
+import { RawJob} from '../src/modules/crawler/dto/job.dto';
+import { normalizeJobDto, rawItem } from '../src/modules/crawler/dto/job.dto';
+import { CrawlerHttp } from '../src/modules/crawler/http';
 
 const fixtures = join(process.cwd(), 'test', 'fixtures', 'adapters');
 const read = (name: string) => readFileSync(join(fixtures, name), 'utf8');
@@ -50,6 +52,7 @@ function makeSource(kind: Source['kind'], baseUrl: string, config: Record<string
     config,
     cron: '0 * * * *',
     enabled: true,
+    killSwitch: false,
     lastRunAt: null,
     lastRunStatus: null,
     lastRunMessage: null,
@@ -198,5 +201,54 @@ describe('source adapters', () => {
     expect(job.remote).toBe(true);
     expect(job.descriptionText).toContain('Zendesk');
     expect(job.sourceUrl).toBe('https://example.com/careers/1');
+  });
+
+  it('rejects malformed items at every adapter boundary', () => {
+    const malformed = JSON.parse(read('malformed.json')) as Record<string, Record<string, unknown>>;
+    const cases: Array<[string, SourceAdapter, Record<string, unknown>]> = [
+      ['greenhouse', new GreenhouseAdapter(makeHttp()), malformed.greenhouse],
+      ['lever', new LeverAdapter(makeHttp()), malformed.lever],
+      ['ashby', new AshbyAdapter(makeHttp()), malformed.ashby],
+      ['remotive', new RemotiveAdapter(makeHttp()), malformed.remotive],
+      ['arbeitnow', new ArbeitnowAdapter(makeHttp()), malformed.arbeitnow],
+      ['jsonld', new JsonLdAdapter(makeHttp()), malformed.jsonld],
+      ['html', new HtmlAdapter(makeHttp()), malformed.html],
+    ];
+
+    for (const [kind, adapter, payload] of cases) {
+      const raw = rawItem(payload, {
+        sourceUrl: 'https://jobs.example.com/jobs/1',
+        baseUrl: 'https://jobs.example.com',
+        company: kind === 'html' ? 'HelpCo' : undefined,
+      });
+      expect(() => adapter.normalize(raw), kind).toThrow(AdapterSchemaError);
+    }
+  });
+
+  it('validates scalar edges, sanitizes HTML, resolves relative URLs, and never marks external JSON-LD onsite', () => {
+    const adapter = new JsonLdAdapter(makeHttp());
+    const job = adapter.normalize(
+      rawItem(
+        {
+          '@type': 'JobPosting',
+          title: 'Platform &amp; API Engineer',
+          hiringOrganization: { name: 'Acme' },
+          description: '<p>Build APIs</p><script>alert(1)</script>',
+          url: '/jobs/1?utm_source=newsletter',
+          directApply: true,
+          datePosted: '2026-10-01',
+          baseSalary: { currency: 'usd', value: { minValue: '50,000', unitText: 'YEAR' } },
+        },
+        { sourceUrl: 'https://jobs.example.com/jobs/1', baseUrl: 'https://jobs.example.com' },
+      ),
+    );
+
+    expect(job.sourceUrl).toBe('https://jobs.example.com/jobs/1');
+    expect(job.descriptionHtml).toBe('<p>Build APIs</p>');
+    expect(job.salaryMin).toBe(50_000);
+    expect(job.salaryCurrency).toBe('USD');
+    expect(job.applyMethod).toBe('external_ats');
+    expect(normalizeJobDto({ ...job, salaryMax: '' }).salaryMax).toBeUndefined();
+    expect(() => normalizeJobDto({ ...job, sourceUrl: '/relative' })).toThrow(AdapterSchemaError);
   });
 });

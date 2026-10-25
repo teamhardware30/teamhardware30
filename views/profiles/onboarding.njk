@@ -1,14 +1,9 @@
 {% extends "layouts/base.njk" %}
+{% from "components/step_indicator.njk" import step_indicator %}
 {% block title %}Set up your profile — Job Copilot{% endblock %}
 {% block content %}
   <div class="mx-auto max-w-2xl">
-    <ol class="mb-8 flex items-center justify-between text-xs font-medium text-brand-text/50">
-      <li class="{{ 'text-brand-primary' if step >= 1 }}">1. Upload CV</li>
-      <li class="{{ 'text-brand-primary' if step >= 2 }}">2. Parsing</li>
-      <li class="{{ 'text-brand-primary' if step >= 3 }}">3. Profile</li>
-      <li class="{{ 'text-brand-primary' if step >= 4 }}">4. Preferences</li>
-    </ol>
-
+    {{ step_indicator(step) }}
     <div
       id="onboarding-step"
       {% if step >= 3 %}hx-get="/onboarding/steps/{{ step }}" hx-trigger="load" hx-swap="innerHTML"{% endif %}
