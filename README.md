@@ -330,6 +330,7 @@ inspect history at `/admin/crawl-runs`.
 | `pnpm db:migrate` | Apply pending migrations |
 | `pnpm db:seed` | Seed categories and crawl sources |
 | `pnpm db:seed:sources` | Upsert crawl sources from `sources.yaml` |
+| `pnpm db:seed:demo` | Seed seeker, employer, and admin demo accounts |
 | `pnpm db:studio` | Open Drizzle Studio |
 | `pnpm typecheck` | TypeScript type check |
 | `pnpm lint` | Run ESLint |
