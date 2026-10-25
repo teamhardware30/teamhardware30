@@ -221,6 +221,22 @@ Then run `pnpm db:migrate`.
 
 ---
 
+## Implemented features requiring external resources
+
+Several implemented features need credentials or services before they work in a
+live environment. See [docs/resource-requirements.md](docs/resource-requirements.md)
+for the full matrix.
+
+- **CV parsing and AI features** require `ANTHROPIC_API_KEY`.
+- **Profile/job embeddings** require `EMBEDDING_API_KEY` when
+  `EMBEDDING_PROVIDER=voyage`, or use `EMBEDDING_PROVIDER=none`.
+- **Resume uploads and generated CVs** require S3-compatible storage.
+- **Verification and application emails** require SMTP.
+- **Google/LinkedIn login** require OAuth credentials.
+- **Malware scanning** requires ClamAV unless `CLAMAV_REQUIRED=false`.
+- **Tailored CV PDFs** require Playwright Chromium.
+- **Crawler sources** require legal/robots review before enabling.
+
 ## Environment variables
 
 | Variable | Required | Default | Notes |
