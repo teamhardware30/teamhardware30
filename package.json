@@ -55,7 +55,7 @@
     "archiver": "^8.0.0",
     "argon2": "^0.41.1",
     "bottleneck": "^2.19.5",
-    "bullmq": "^5.28.0",
+    "bullmq": "^6.4.0",
     "cheerio": "^1.2.0",
     "compression": "^1.8.2",
     "concurrently": "^10.0.6",

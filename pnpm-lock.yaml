@@ -19,16 +19,16 @@ importers:
         version: 3.1156.0
       '@bull-board/api':
         specifier: ^9.10.5
-        version: 9.10.5(@bull-board/ui@9.10.5(bullmq@5.81.5)(typescript@5.9.3))(bullmq@5.81.5)(typescript@5.9.3)
+        version: 9.10.5(@bull-board/ui@9.10.5(bullmq@6.4.0(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3))(bullmq@6.4.0(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3)
       '@bull-board/express':
         specifier: ^9.10.5
-        version: 9.10.5(bullmq@5.81.5)(typescript@5.9.3)
+        version: 9.10.5(bullmq@6.4.0(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3)
       '@napi-rs/canvas':
         specifier: ^1.0.13
         version: 1.0.13
       '@nestjs/bullmq':
         specifier: ^10.2.3
-        version: 10.2.3(@nestjs/common@11.2.8(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.8)(bullmq@5.81.5)
+        version: 10.2.3(@nestjs/common@11.2.8(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.8)(bullmq@6.4.0(ioredis@5.11.1)(pg@8.23.1))
       '@nestjs/common':
         specifier: ^11.0.0
         version: 11.2.8(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -66,8 +66,8 @@ importers:
         specifier: ^2.19.5
         version: 2.19.5
       bullmq:
-        specifier: ^5.28.0
-        version: 5.81.5
+        specifier: ^6.4.0
+        version: 6.4.0(ioredis@5.11.1)(pg@8.23.1)
       cheerio:
         specifier: ^1.2.0
         version: 1.2.0
@@ -2668,12 +2668,21 @@ packages:
     resolution: {integrity: sha512-lHblz4ahamxpTmnsk+MNTRWsjYKv965MwOrSJyeD588rR3Jcu7swE+0wN5F+PbL5cjgu/9ObkhfzEPuofEMwLA==}
     engines: {node: '>=10.0.0'}
 
-  bullmq@5.81.5:
-    resolution: {integrity: sha512-pW7pFc/X+9AEIx91TWTdIpZ1icfbJnA0unsyzD7VICjCUw8a3qedSjej5dxxn6LjfM1kr2jvalOCGbCmoA5Kxg==}
-    engines: {node: '>=12.22.0'}
+  bullmq@6.4.0:
+    resolution: {integrity: sha512-wEx8b4tDmW1upAOXS0SCy0No+DBTAkV82GFP/rb0EAM3qtAOAXAXKJ2OKiWq4g7xZ1Bv+WpkwvvJx1mxWY+taw==}
+    engines: {node: '>=14.17.0'}
     peerDependencies:
+      bullmq-otel: '>=2.0.0'
+      ioredis: '>=5.0.0'
+      pg: '>=8.0.0'
       redis: '>=5.0.0'
     peerDependenciesMeta:
+      bullmq-otel:
+        optional: true
+      ioredis:
+        optional: true
+      pg:
+        optional: true
       redis:
         optional: true
 
@@ -2917,10 +2926,9 @@ packages:
   create-require@1.1.1:
     resolution: {integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==}
 
-  cron-parser@4.9.0:
-    resolution: {integrity: sha512-p0SaNjrHOnQeR8/VnfGbmg9te2kfyYSQ7Sc/j/6DtPL3JQvKxmjO9TSjNFpujqV3vEYYBvNNvXSxzyksBWAx1Q==}
-    engines: {node: '>=12.0.0'}
-    deprecated: v4 is no longer maintained, upgrade to v5
+  cron-parser@5.10.2:
+    resolution: {integrity: sha512-JfAYMY0LZaWQTuict8PhtF/ksSnq8xefSDmQUnnoqvkPYkU/y3UP0DTWzJKFBz0P1IXsDG8q0vY3zHkoFZOhvw==}
+    engines: {node: '>=18'}
 
   cron@3.2.1:
     resolution: {integrity: sha512-w2n5l49GMmmkBFEsH9FIDhjZ1n1QgTMOCMGuQtOXs5veNiosZmso6bQGuqOJSYAXXrG84WQFVneNk+Yt0Ua9iw==}
@@ -4254,8 +4262,8 @@ packages:
     resolution: {integrity: sha512-4kmO/MdyUIkLIvTPr8VHLil4AtoKIoniWPIEk5+CDy0xnWC84azhSFmuJ7PxZdsYtiP5kEeQsORAVIeMgxT+Hw==}
     hasBin: true
 
-  msgpackr@2.0.5:
-    resolution: {integrity: sha512-cef05H/dSYpLpqp3sj/qyZh5vhUYCalnaLO7j1yOmpsR0y/XwLVtK7r5gn+U/F7CTEfMowcGhlUQJDLcLf7jcA==}
+  msgpackr@2.1.0:
+    resolution: {integrity: sha512-p/pBCVO63CsvvpkomUnNNag6+n38rULuDA6HHe70o2gtC8ODI52foF/4ko2qQcp6OiErJXTmrZeXmsGGHsIQNQ==}
 
   msw@2.15.0:
     resolution: {integrity: sha512-2wQAmKkQKxRuXvYJxVhPGG0wZNBQyD06oJvxqw90XqLvptdqxdlHrFUfEteKkpaNORX3Xzc+HtEl/q0nfmN2wQ==}
@@ -5969,20 +5977,20 @@ snapshots:
 
   '@borewit/text-codec@0.2.2': {}
 
-  '@bull-board/api@9.10.5(@bull-board/ui@9.10.5(bullmq@5.81.5)(typescript@5.9.3))(bullmq@5.81.5)(typescript@5.9.3)':
+  '@bull-board/api@9.10.5(@bull-board/ui@9.10.5(bullmq@6.4.0(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3))(bullmq@6.4.0(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3)':
     dependencies:
-      '@bull-board/ui': 9.10.5(bullmq@5.81.5)(typescript@5.9.3)
+      '@bull-board/ui': 9.10.5(bullmq@6.4.0(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3)
       redis-info: 3.1.0
       valibot: 1.5.0(typescript@5.9.3)
     optionalDependencies:
-      bullmq: 5.81.5
+      bullmq: 6.4.0(ioredis@5.11.1)(pg@8.23.1)
     transitivePeerDependencies:
       - typescript
 
-  '@bull-board/express@9.10.5(bullmq@5.81.5)(typescript@5.9.3)':
+  '@bull-board/express@9.10.5(bullmq@6.4.0(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3)':
     dependencies:
-      '@bull-board/api': 9.10.5(@bull-board/ui@9.10.5(bullmq@5.81.5)(typescript@5.9.3))(bullmq@5.81.5)(typescript@5.9.3)
-      '@bull-board/ui': 9.10.5(bullmq@5.81.5)(typescript@5.9.3)
+      '@bull-board/api': 9.10.5(@bull-board/ui@9.10.5(bullmq@6.4.0(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3))(bullmq@6.4.0(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3)
+      '@bull-board/ui': 9.10.5(bullmq@6.4.0(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3)
       ejs: 6.0.1
       express: 5.2.1
     transitivePeerDependencies:
@@ -5991,9 +5999,9 @@ snapshots:
       - supports-color
       - typescript
 
-  '@bull-board/ui@9.10.5(bullmq@5.81.5)(typescript@5.9.3)':
+  '@bull-board/ui@9.10.5(bullmq@6.4.0(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3)':
     dependencies:
-      '@bull-board/api': 9.10.5(@bull-board/ui@9.10.5(bullmq@5.81.5)(typescript@5.9.3))(bullmq@5.81.5)(typescript@5.9.3)
+      '@bull-board/api': 9.10.5(@bull-board/ui@9.10.5(bullmq@6.4.0(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3))(bullmq@6.4.0(ioredis@5.11.1)(pg@8.23.1))(typescript@5.9.3)
     transitivePeerDependencies:
       - bull
       - bullmq
@@ -6599,12 +6607,12 @@ snapshots:
       '@nestjs/core': 11.2.8(@nestjs/common@11.2.8(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.2.8)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       tslib: 2.8.1
 
-  '@nestjs/bullmq@10.2.3(@nestjs/common@11.2.8(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.8)(bullmq@5.81.5)':
+  '@nestjs/bullmq@10.2.3(@nestjs/common@11.2.8(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.8)(bullmq@6.4.0(ioredis@5.11.1)(pg@8.23.1))':
     dependencies:
       '@nestjs/bull-shared': 10.2.3(@nestjs/common@11.2.8(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.8)
       '@nestjs/common': 11.2.8(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/core': 11.2.8(@nestjs/common@11.2.8(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.2.8)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      bullmq: 5.81.5
+      bullmq: 6.4.0(ioredis@5.11.1)(pg@8.23.1)
       tslib: 2.8.1
 
   '@nestjs/cli@11.0.24(@swc/core@1.16.20)(@types/node@22.20.5)(esbuild@0.19.12)(lightningcss@1.32.0)(prettier@3.9.10)':
@@ -8011,16 +8019,16 @@ snapshots:
   buildcheck@0.0.7:
     optional: true
 
-  bullmq@5.81.5:
+  bullmq@6.4.0(ioredis@5.11.1)(pg@8.23.1):
     dependencies:
-      cron-parser: 4.9.0
-      ioredis: 5.11.1
-      msgpackr: 2.0.5
+      cron-parser: 5.10.2
+      msgpackr: 2.1.0
       node-abort-controller: 3.1.1
       semver: 7.8.5
       tslib: 2.8.1
-    transitivePeerDependencies:
-      - supports-color
+    optionalDependencies:
+      ioredis: 5.11.1
+      pg: 8.23.1
 
   busboy@1.6.0:
     dependencies:
@@ -8267,7 +8275,7 @@ snapshots:
 
   create-require@1.1.1: {}
 
-  cron-parser@4.9.0:
+  cron-parser@5.10.2:
     dependencies:
       luxon: 3.7.2
 
@@ -9687,7 +9695,7 @@ snapshots:
       '@msgpackr-extract/msgpackr-extract-win32-x64': 3.0.4
     optional: true
 
-  msgpackr@2.0.5:
+  msgpackr@2.1.0:
     optionalDependencies:
       msgpackr-extract: 3.0.4
 
