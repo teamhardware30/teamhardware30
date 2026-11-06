@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 
 export const EMBEDDING_DIMENSIONS = 1024;
 
-import { fetch } from 'undici';
 export interface EmbeddingProviderUsage {
   inputTokens: number | null;
   outputTokens: number | null;

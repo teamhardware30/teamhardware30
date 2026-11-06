@@ -1,0 +1,4 @@
+# Prompt templates are string-matched in tests and rendered verbatim at
+# runtime, so they must always be checked out with LF endings regardless of
+# core.autocrlf on Windows.
+src/modules/ai/prompts/*.md text eol=lf
