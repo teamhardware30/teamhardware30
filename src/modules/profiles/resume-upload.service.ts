@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { S3Client} from '@aws-sdk/client-s3';
-import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand, CreateBucketCommand } from '@aws-sdk/client-s3';
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { fromBuffer as fileTypeFromBuffer } from 'file-type';
@@ -23,12 +23,33 @@ export interface UploadedResume {
 @Injectable()
 export class ResumeUploadService {
   private readonly bucket: string;
+  private bucketReady?: Promise<void>;
 
   constructor(
     @Inject(S3_CLIENT) private readonly s3: S3Client,
     @Inject(ConfigService) private readonly config: ConfigService,
   ) {
     this.bucket = this.config.get<string>('S3_BUCKET') ?? 'job-copilot-uploads';
+  }
+
+  /**
+   * Creates the bucket on first use when the storage backend was provisioned
+   * without one (Railway/MinIO/SeaweedFS). Safe to call repeatedly: already
+   * existing buckets are treated as success.
+   */
+  private ensureBucket(): Promise<void> {
+    if (!this.bucketReady) {
+      this.bucketReady = this.s3
+        .send(new CreateBucketCommand({ Bucket: this.bucket }))
+        .then(() => undefined)
+        .catch((error: Error & { name?: string; Code?: string }) => {
+          const code = error.name ?? error.Code ?? '';
+          if (/BucketAlreadyOwnedByYou|BucketAlreadyExists/.test(code)) return;
+          this.bucketReady = undefined;
+          throw error;
+        });
+    }
+    return this.bucketReady;
   }
 
   async upload(file: Express.Multer.File, userId: string): Promise<UploadedResume> {
@@ -45,6 +66,7 @@ export class ResumeUploadService {
     const extension = detected.ext;
     const key = `resumes/${userId}/${randomUUID()}.${extension}`;
 
+    await this.ensureBucket();
     await this.s3.send(
       new PutObjectCommand({
         Bucket: this.bucket,
@@ -58,6 +80,7 @@ export class ResumeUploadService {
   }
 
   async delete(s3Key: string): Promise<void> {
+    await this.ensureBucket();
     await this.s3.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: s3Key }));
   }
 
@@ -65,11 +88,13 @@ export class ResumeUploadService {
     if (buffer.length > MAX_RESUME_SIZE_BYTES) throw new BadRequestException('File must be 5 MB or smaller');
     const extension = fileName.split('.').pop() || 'pdf';
     const key = `resumes/${userId}/${randomUUID()}.${extension}`;
+    await this.ensureBucket();
     await this.s3.send(new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: buffer, ContentType: mimeType }));
     return { s3Key: key, mimeType, sizeBytes: buffer.length };
   }
 
   async download(s3Key: string): Promise<Buffer> {
+    await this.ensureBucket();
     const response = await this.s3.send(new GetObjectCommand({ Bucket: this.bucket, Key: s3Key }));
     if (!response.Body) {
       throw new Error('Stored resume has no readable content');

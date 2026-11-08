@@ -13,6 +13,7 @@ ENV NODE_ENV=production
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/public ./public
+COPY --from=build /app/views ./views
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
 # Needed to run drizzle-kit migrations at boot (seed scripts run from dist/).
