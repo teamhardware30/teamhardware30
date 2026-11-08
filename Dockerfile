@@ -15,7 +15,7 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/public ./public
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
-# Needed to run drizzle-kit migrations and ts-node seed scripts at boot.
+# Needed to run drizzle-kit migrations at boot (seed scripts run from dist/).
 COPY --from=build /app/src ./src
 COPY --from=build /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=build /app/tsconfig.json ./tsconfig.json
@@ -25,4 +25,4 @@ COPY --from=build /ms-playwright /ms-playwright
 RUN useradd -m appuser && chown -R appuser:appuser /app /ms-playwright
 USER appuser
 EXPOSE 3000
-CMD ["sh", "-c", "npx drizzle-kit migrate && ts-node src/modules/crawler/seed-sources.ts && node dist/main.js"]
+CMD ["sh", "-c", "npx drizzle-kit migrate && node dist/modules/crawler/seed-sources.js && node dist/modules/auth/seed-demo-users.js && node dist/main.js"]
