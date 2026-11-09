@@ -1,6 +1,3 @@
-import { S3Client} from '@aws-sdk/client-s3';
-import { GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { InjectQueue } from '@nestjs/bullmq';
 /* eslint-disable no-control-regex */
 import {
@@ -9,7 +6,6 @@ import {
   Delete,
   Get,
   HttpCode,
-  Inject,
   HttpStatus,
   Param,
   Post,
@@ -21,7 +17,6 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Queue } from 'bullmq';
 import { Request, Response } from 'express';
@@ -31,7 +26,6 @@ import { EMBED_PROFILE_QUEUE } from './embed-profile.processor';
 import { PARSE_RESUME_QUEUE } from './parse-resume.processor';
 import { ProfilesService } from './profiles.service';
 import { ResumeUploadService } from './resume-upload.service';
-import { S3_CLIENT } from './s3-client.provider';
 import {
   experienceSchema,
   educationSchema,
@@ -50,8 +44,6 @@ export class ProfilesController {
     private readonly resumeUploadService: ResumeUploadService,
     @InjectQueue(PARSE_RESUME_QUEUE) private readonly parseResumeQueue: Queue,
     @InjectQueue(EMBED_PROFILE_QUEUE) private readonly embedProfileQueue: Queue,
-    @Inject(S3_CLIENT) private readonly s3Client: S3Client,
-    private readonly config: ConfigService,
   ) {}
 
   @Get('onboarding')
@@ -547,8 +539,11 @@ export class ProfilesController {
       res.status(404).render('errors/404');
       return;
     }
-    const url = await getSignedUrl(this.s3Client, new GetObjectCommand({ Bucket: this.config.getOrThrow<string>('S3_BUCKET'), Key: resume.s3Key }), { expiresIn: 300 });
-    res.redirect(url);
+    const body = await this.resumeUploadService.download(resume.s3Key);
+    res.setHeader('Content-Type', resume.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', contentDisposition(resume.fileName));
+    res.setHeader('Content-Length', String(body.length));
+    res.send(body);
   }
 
   private async renderStep(res: Response, step: number, profileId: string, extras: Record<string, unknown> = {}) {
@@ -572,6 +567,11 @@ export class ProfilesController {
 
 function currentUser(req: Request): User {
   return req.user as User;
+}
+
+function contentDisposition(fileName: string): string {
+  const fallback = fileName.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');
+  return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
 }
 
 function safeReturnTo(value: unknown): string {

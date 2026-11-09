@@ -82,6 +82,13 @@ describe('Profiles (e2e)', () => {
     expect(profile.status).toBe(200);
     expect(profile.text).toContain('listed-cv.pdf');
     expect(profile.text).not.toContain('No resumes uploaded yet.');
+
+    const resumeId = profile.text.match(/\/profile\/resumes\/([a-f0-9-]{36})\/download/)?.[1];
+    expect(resumeId).toBeTruthy();
+    const download = await agent.get(`/profile/resumes/${resumeId}/download`);
+    expect(download.status).toBe(200);
+    expect(download.headers['content-type']).toContain('application/pdf');
+    expect(download.body.length).toBeGreaterThan(0);
   });
 
   it('rejects a disallowed file type', async () => {
