@@ -231,7 +231,9 @@ for the full matrix.
 - **Profile/job embeddings** require `EMBEDDING_API_KEY` when
   `EMBEDDING_PROVIDER=voyage`, or use `EMBEDDING_PROVIDER=none`.
 - **Resume uploads and generated CVs** require S3-compatible storage.
-- **Verification and application emails** require SMTP.
+- **Verification and application emails** require SMTP or a Brevo API key
+  (`BREVO_API_KEY`). Hosts that block outbound SMTP ports, such as Railway,
+  must use the Brevo HTTP API instead of `SMTP_*`.
 - **Google/LinkedIn login** require OAuth credentials.
 - **Malware scanning** requires ClamAV unless `CLAMAV_REQUIRED=false`.
 - **Tailored CV PDFs** require Playwright Chromium.
@@ -248,9 +250,10 @@ for the full matrix.
 | `REDIS_URL` | **yes** | — | Redis connection string |
 | `SESSION_SECRET` | **yes** | — | Minimum 16 characters |
 | `CSRF_SECRET` | **yes** | — | Minimum 16 characters |
-| `SMTP_HOST` / `SMTP_PORT` | no | — | Required for verification emails |
+| `SMTP_HOST` / `SMTP_PORT` | no | — | Required for verification emails (not for the Brevo API) |
 | `SMTP_USER` / `SMTP_PASS` | no | — | Omit for Mailpit |
 | `SMTP_FROM` | no | `no-reply@job-copilot.local` | Sender address |
+| `BREVO_API_KEY` | no | — | Send email over HTTPS instead of SMTP (use on hosts that block port 587) |
 | `LINKEDIN_CLIENT_ID` / `SECRET` | no | — | LinkedIn OIDC login |
 | `GOOGLE_CLIENT_ID` / `SECRET` | no | — | Google OAuth login |
 | `ANTHROPIC_API_KEY` | no | — | CV parsing and AI features |
@@ -397,7 +400,9 @@ pnpm test:e2e
   step and restart Postgres.
 - **Verification email never arrives** — make sure Mailpit is running and that
   `SMTP_HOST=127.0.0.1` / `SMTP_PORT=1025` are set, then check
-  <http://localhost:8025>.
+  <http://localhost:8025>. On hosts that block outbound SMTP (Railway), set
+  `BREVO_API_KEY` so mail is sent over HTTPS; a `Connection timeout` in the
+  logs means the SMTP ports are blocked.
 - **Pages look unstyled** — run `pnpm css:build`.
 - **Resume upload fails** — S3/MinIO credentials are not configured.
 

@@ -36,4 +36,15 @@ describe('environment validation', () => {
     });
     expect(config.NODE_ENV).toBe('production');
   });
+
+  it('accepts a Brevo API key instead of SMTP in production', () => {
+    const config = validateEnv({
+      ...development,
+      NODE_ENV: 'production',
+      BREVO_API_KEY: 'brevo-key',
+      ANTHROPIC_API_KEY: 'anthropic-key',
+      EMBEDDING_PROVIDER: 'none',
+    });
+    expect(config.BREVO_API_KEY).toBe('brevo-key');
+  });
 });

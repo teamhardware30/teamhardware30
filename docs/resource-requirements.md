@@ -18,7 +18,7 @@ is configured.
 
 | Resource | Used by | Notes |
 |---|---|---|
-| SMTP server | Email verification, password/apply email flows | Mailpit works locally on `127.0.0.1:1025` |
+| SMTP server | Email verification, password/apply email flows | Mailpit works locally on `127.0.0.1:1025`. Hosts that block outbound SMTP (e.g. Railway) need `BREVO_API_KEY` instead |
 
 ## Required for CV parsing and AI features
 

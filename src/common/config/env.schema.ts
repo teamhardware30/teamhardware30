@@ -49,6 +49,7 @@ export const envSchema = z
     SMTP_USER: z.string().optional(),
     SMTP_PASS: z.string().optional(),
     SMTP_FROM: z.string().default('no-reply@job-copilot.local'),
+    BREVO_API_KEY: z.string().optional(),
 
     APPLY_DAILY_LIMIT: z.coerce.number().int().positive().default(25),
     SCAN_DAILY_LIMIT: z.coerce.number().int().positive().default(20),
@@ -64,7 +65,11 @@ export const envSchema = z
     if (config.NODE_ENV !== 'production') return;
 
     const required: Array<[keyof typeof config, boolean, string]> = [
-      ['SMTP_HOST', Boolean(config.SMTP_HOST), 'SMTP_HOST is required in production'],
+      [
+        'SMTP_HOST',
+        Boolean(config.SMTP_HOST || config.BREVO_API_KEY),
+        'SMTP_HOST or BREVO_API_KEY is required in production',
+      ],
       ['S3_BUCKET', Boolean(config.S3_BUCKET), 'S3_BUCKET is required in production'],
       ['ANTHROPIC_API_KEY', Boolean(config.ANTHROPIC_API_KEY), 'ANTHROPIC_API_KEY is required in production'],
     ];
