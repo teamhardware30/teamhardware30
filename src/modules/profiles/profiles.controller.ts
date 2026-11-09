@@ -130,7 +130,8 @@ export class ProfilesController {
   async retryResume(@Req() req: Request, @Res() res: Response) {
     const user = currentUser(req);
     const profile = await this.profilesService.getOrCreateForUser(user.id);
-    const [latest] = await this.profilesService.listResumes(profile.id);
+    const resumes = await this.profilesService.listResumes(profile.id);
+    const latest = resumes.at(-1);
     if (!latest) {
       await this.renderStep(res, 1, profile.id, { profile, returnTo: '/onboarding', fieldErrors: { resume: 'Upload a CV to get started' } });
       return;
@@ -445,11 +446,9 @@ export class ProfilesController {
     }
     try {
       const uploaded = await this.resumeUploadService.upload(file, user.id);
-      await this.profilesService.addResume(profile.id, { fileName: file.originalname, ...uploaded, source: 'upload' });
+      const resume = await this.profilesService.addResume(profile.id, { fileName: file.originalname, ...uploaded, source: 'upload' });
       await this.profilesService.setParseStatus(profile.id, 'processing');
-      const resumes = await this.profilesService.listResumes(profile.id);
-      const [latest] = resumes;
-      await this.parseResumeQueue.add('parse', { profileId: profile.id, resumeId: latest.id });
+      await this.parseResumeQueue.add('parse', { profileId: profile.id, resumeId: resume.id });
     } catch (error) {
       const resumes = await this.profilesService.listResumes(profile.id);
       res.status(422).render('profiles/partials/resumes-list', { resumes, fieldErrors: { resume: error instanceof Error ? error.message : 'Could not upload this file' } });
