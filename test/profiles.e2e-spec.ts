@@ -65,6 +65,25 @@ describe('Profiles (e2e)', () => {
     expect(res.text).toContain('Reading your CV');
   });
 
+  it('lists uploaded resumes on the profile page', async () => {
+    const agent = await registerAndLogin(ctx, 'resume-list@example.com');
+    const onboardingPage = await agent.get('/onboarding');
+    const csrf = extractCsrf(onboardingPage.text);
+
+    const pdfBuffer = Buffer.from('%PDF-1.4\n%mock resume content for testing\n%%EOF');
+    const upload = await agent
+      .post('/onboarding/resume')
+      .set('hx-request', 'true')
+      .set('x-csrf-token', csrf)
+      .attach('resume', pdfBuffer, { filename: 'listed-cv.pdf', contentType: 'application/pdf' });
+    expect(upload.status).toBe(200);
+
+    const profile = await agent.get('/profile');
+    expect(profile.status).toBe(200);
+    expect(profile.text).toContain('listed-cv.pdf');
+    expect(profile.text).not.toContain('No resumes uploaded yet.');
+  });
+
   it('rejects a disallowed file type', async () => {
     const agent = await registerAndLogin(ctx, 'badfile@example.com');
     const onboardingPage = await agent.get('/onboarding');

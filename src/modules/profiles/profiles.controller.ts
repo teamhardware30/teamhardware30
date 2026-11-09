@@ -390,8 +390,10 @@ export class ProfilesController {
     const user = currentUser(req);
     const profile = await this.profilesService.getOrCreateForUser(user.id);
     const full = await this.profilesService.findFullProfile(profile.id);
+    const resumes = await this.profilesService.listResumes(profile.id);
     return {
       profile: full,
+      resumes,
       seniorityValues,
       jobTypeValues: [],
       completeness: full ? this.profilesService.profileCompleteness(full) : 0,
