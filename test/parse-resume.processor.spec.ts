@@ -33,6 +33,7 @@ function makeProcessor() {
     applyParsedResume: vi.fn(async () => undefined),
     setParseStatus: vi.fn(async () => undefined),
     saveResumeRawText: vi.fn(async () => undefined),
+    updateResumeParseResult: vi.fn(async () => undefined),
   };
   const resumeUploadService = { download: vi.fn(async () => Buffer.from('file-bytes')) };
   const aiService = { completeJson: vi.fn(async () => makeParsedResume()) };
@@ -168,5 +169,32 @@ describe('ParseResumeProcessor', () => {
     await expect(processor.process(makeJob({ profileId: 'profile-6', resumeId: 'missing' }))).rejects.toThrow(
       'could not be found',
     );
+  });
+
+  it('records the failure against the resume row, not only the profile', async () => {
+    const { processor, profilesService, aiService } = makeProcessor();
+    profilesService.findResumeById.mockResolvedValue(storedResume('profile-7'));
+    aiService.completeJson.mockRejectedValueOnce(new Error('scanned document'));
+
+    await expect(processor.process(makeJob({ profileId: 'profile-7', resumeId: 'resume-1' }))).rejects.toThrow(
+      'scanned document',
+    );
+    expect(profilesService.updateResumeParseResult).toHaveBeenCalledWith('resume-1', {
+      parseStatus: 'failed',
+      parseError: 'scanned document',
+    });
+  });
+
+  it('records the failure against the resume row when the resume is missing', async () => {
+    const { processor, profilesService } = makeProcessor();
+    profilesService.findResumeById.mockResolvedValue(undefined);
+
+    await expect(processor.process(makeJob({ profileId: 'profile-8', resumeId: 'missing' }))).rejects.toThrow(
+      'could not be found',
+    );
+    expect(profilesService.updateResumeParseResult).toHaveBeenCalledWith('missing', {
+      parseStatus: 'failed',
+      parseError: 'The uploaded resume could not be found. Upload it again and retry.',
+    });
   });
 });

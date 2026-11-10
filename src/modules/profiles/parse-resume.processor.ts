@@ -69,8 +69,7 @@ export class ParseResumeProcessor extends WorkerHost {
             : 'We could not parse this resume. Please try again or upload a different file.';
 
       try {
-        const updater = (this.profilesService as { updateResumeParseResult?: (id: string, data: { parseStatus: string; parseError: string }) => Promise<void> }).updateResumeParseResult;
-        if (updater) await updater(resumeId, { parseStatus: 'failed', parseError: friendly });
+        await this.profilesService.updateResumeParseResult(resumeId, { parseStatus: 'failed', parseError: friendly });
       } catch {
         // Preserve the original processing error if the status update fails.
       }
@@ -84,9 +83,8 @@ export class ParseResumeProcessor extends WorkerHost {
   }
 
   private async setFailed(profileId: string, resumeId: string, message: string): Promise<void> {
-    const updater = (this.profilesService as { updateResumeParseResult?: (id: string, data: { parseStatus: string; parseError: string }) => Promise<void> }).updateResumeParseResult;
     try {
-      if (updater) await updater(resumeId, { parseStatus: 'failed', parseError: message });
+      await this.profilesService.updateResumeParseResult(resumeId, { parseStatus: 'failed', parseError: message });
     } catch {
       // Preserve the original processing error if the status update fails.
     }

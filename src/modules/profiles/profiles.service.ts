@@ -392,7 +392,7 @@ export class ProfilesService {
         await tx.insert(profileSkills).values(profileSkillValues);
       }
 
-      await tx.update(resumes).set({ parsedJson: parsed }).where(eq(resumes.id, resumeId));
+      await tx.update(resumes).set({ parsedJson: parsed, parseStatus: 'done', parseError: null }).where(eq(resumes.id, resumeId));
     });
   }
 

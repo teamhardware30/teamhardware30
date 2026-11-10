@@ -111,7 +111,7 @@ describe('ProfilesService parsed-resume persistence', () => {
       { profileId: 'profile-1', skillId: 'skill-postgres' },
       { profileId: 'profile-1', skillId: 'skill-new' },
     ]);
-    expect(updates.find((entry) => entry.table === resumes)?.values).toEqual({ parsedJson: parsed });
+    expect(updates.find((entry) => entry.table === resumes)?.values).toEqual({ parsedJson: parsed, parseStatus: 'done', parseError: null });
     expect(updates.find((entry) => entry.table === seekerProfiles)?.values).toMatchObject({
       headline: 'Senior Software Engineer',
       location: 'Nairobi, Kenya',

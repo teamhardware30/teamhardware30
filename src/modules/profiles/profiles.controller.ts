@@ -104,7 +104,7 @@ export class ProfilesController {
     }
     try {
       const uploaded = await this.resumeUploadService.upload(file, user.id);
-      const resume = await this.profilesService.addResume(profile.id, { fileName: file.originalname, ...uploaded, source: 'upload' });
+      const resume = await this.profilesService.addResume(profile.id, { fileName: file.originalname, ...uploaded, source: 'upload', parseStatus: 'processing' });
       await this.profilesService.setParseStatus(profile.id, 'processing');
       await this.parseResumeQueue.add('parse', { profileId: profile.id, resumeId: resume.id });
       await this.renderStep(res, 2, profile.id, { profile: { ...profile, parseStatus: 'processing' }, returnTo: '/onboarding' });
@@ -446,7 +446,7 @@ export class ProfilesController {
     }
     try {
       const uploaded = await this.resumeUploadService.upload(file, user.id);
-      const resume = await this.profilesService.addResume(profile.id, { fileName: file.originalname, ...uploaded, source: 'upload' });
+      const resume = await this.profilesService.addResume(profile.id, { fileName: file.originalname, ...uploaded, source: 'upload', parseStatus: 'processing' });
       await this.profilesService.setParseStatus(profile.id, 'processing');
       await this.parseResumeQueue.add('parse', { profileId: profile.id, resumeId: resume.id });
     } catch (error) {
