@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import { accounts } from './accounts.schema';
+import { applications } from './applications.schema';
 import { categories } from './categories.schema';
 import { companies } from './companies.schema';
 import { crawlRuns } from './crawl-runs.schema';
@@ -80,4 +81,10 @@ export const jobsRelations = relations(jobs, ({ one, many }) => ({
 export const matchesRelations = relations(matches, ({ one }) => ({
   profile: one(seekerProfiles, { fields: [matches.profileId], references: [seekerProfiles.id] }),
   job: one(jobs, { fields: [matches.jobId], references: [jobs.id] }),
+}));
+
+export const applicationsRelations = relations(applications, ({ one }) => ({
+  profile: one(seekerProfiles, { fields: [applications.profileId], references: [seekerProfiles.id] }),
+  job: one(jobs, { fields: [applications.jobId], references: [jobs.id] }),
+  resume: one(resumes, { fields: [applications.resumeId], references: [resumes.id] }),
 }));
