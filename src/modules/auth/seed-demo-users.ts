@@ -9,7 +9,6 @@ import { hashPassword } from './password.util';
 const demoUsers = [
   { email: 'seeker@demo.jobcopilot.local', password: 'DemoSeeker123!', role: 'seeker', name: 'Demo Seeker' },
   { email: 'employer@demo.jobcopilot.local', password: 'DemoEmployer123!', role: 'employer', name: 'Demo Employer' },
-  { email: 'admin@demo.jobcopilot.local', password: 'DemoAdmin123!', role: 'admin', name: 'Demo Admin' },
 ] as const;
 
 async function main(): Promise<void> {
