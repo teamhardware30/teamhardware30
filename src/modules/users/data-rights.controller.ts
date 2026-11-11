@@ -6,11 +6,11 @@ import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
 import { DataRightsService } from './data-rights.service';
 
 @Controller()
-@UseGuards(AuthenticatedGuard)
 export class DataRightsController {
   constructor(private readonly dataRights: DataRightsService) {}
 
   @Get('account/export')
+  @UseGuards(AuthenticatedGuard)
   async export(@CurrentUser() user: User, @Res() res: Response) {
     const data = await this.dataRights.exportAccount(user.id);
     res.setHeader('Content-Disposition', 'attachment; filename="job-copilot-export.json"');
@@ -18,6 +18,7 @@ export class DataRightsController {
   }
 
   @Post('account/delete')
+  @UseGuards(AuthenticatedGuard)
   async delete(@CurrentUser() user: User, @Req() req: Request, @Res() res: Response) {
     await this.dataRights.deleteAccount(user.id);
     req.logout(() => undefined);
