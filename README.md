@@ -385,6 +385,36 @@ pnpm test:e2e
 
 ---
 
+## Deployment
+
+The repository ships one runtime image (`Dockerfile`) and runs it twice:
+
+- **web** — `node dist/main.js`, healthcheck `GET /healthz`
+- **worker** — `node dist/worker.js` (crawl, parse, embed, enrich, maintenance)
+
+Both processes need the same `DATABASE_URL`, `REDIS_URL`, `SESSION_SECRET`,
+`CSRF_SECRET`, and `APP_URL`. The web container runs `drizzle-kit migrate`,
+the source seeds, and the demo-user seeds before `dist/main.js`, so an empty
+database is set up on first boot.
+
+Production notes:
+
+- **Postgres** needs the `vector` and `pg_trgm` extensions; the image and
+  `pgvector/pgvector:pg16` both work.
+- **Object storage** must be S3-compatible. Set `S3_ENDPOINT`,
+  `S3_BUCKET`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and
+  `S3_FORCE_PATH_STYLE=true` for path-style endpoints such as SeaweedFS.
+  The bucket is created on first upload if the credentials allow it.
+- **Email**: either provide `SMTP_HOST`/`SMTP_PORT` (plus credentials) or
+  `BREVO_API_KEY`. Some hosts block outbound SMTP ports; the Brevo HTTP API
+  sends over 443 and only needs an API key with *Send email* permission.
+  `SMTP_FROM` must be a verified sender for both paths.
+- **AI features** (CV parsing, cover letters, tailoring, match explanations)
+  require a funded `ANTHROPIC_API_KEY`. Without credits those requests fail
+  and the affected resume is marked `failed` with a retry action.
+
+---
+
 ## Troubleshooting
 
 - **Port already in use (`EADDRINUSE`)** — stop the process using port 3000, or
