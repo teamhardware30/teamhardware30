@@ -4,13 +4,35 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 const views = join(process.cwd(), 'views');
 
+let env: nunjucks.Environment;
+
 beforeAll(() => {
-  nunjucks.configure(views, { autoescape: true, noCache: true });
+  env = nunjucks.configure(views, { autoescape: true, noCache: true });
+  env.addFilter('timeAgo', (value: Date | string | null | undefined) => (value ? 'just now' : ''));
 });
 
 describe('Nunjucks components', () => {
   it('compiles every application template', () => {
     expect(() => nunjucks.precompile(views)).not.toThrow();
+  });
+
+  it('renders the matches page with and without matches', () => {
+    const empty = env.render('matches/index.njk', { matches: [], csrfToken: 'token' });
+    expect(empty).toContain('No matches yet');
+
+    const populated = env.render('matches/index.njk', {
+      csrfToken: 'token',
+      matches: [
+        {
+          id: 'match-1',
+          score: 82,
+          job: { id: 'job-1', title: 'Backend Engineer', company: 'Acme', location: null, postedAt: new Date() },
+        },
+      ],
+    });
+    expect(populated).toContain('Backend Engineer');
+    expect(populated).toContain('aria-label="Score 82 out of 100"');
+    expect(populated).not.toContain('No matches yet');
   });
 
   it('renders score thresholds accessibly', () => {
